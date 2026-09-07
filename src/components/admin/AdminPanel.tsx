@@ -92,6 +92,7 @@ interface AdminPanelProps {
   onTabChange?: (tab: AdminTabType) => void;
   onClose: () => void;
   onSettingsUpdated: (newSettings: SiteSettings) => void;
+  onProductsUpdated?: (newProducts: ProductItem[]) => void;
   onCategoriesUpdated?: (newCategories: ProductCategoryDef[]) => void;
   onPowerRangesUpdated?: (newPowerRanges: string[]) => void;
   onInquiriesUpdated?: (newInquiries: InquiryRecord[]) => void;
@@ -104,6 +105,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   onTabChange,
   onClose,
   onSettingsUpdated,
+  onProductsUpdated,
   onCategoriesUpdated,
   onPowerRangesUpdated,
   onInquiriesUpdated,
@@ -1100,6 +1102,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               onRemoveBrandFromCategory={handleRemoveBrandFromActiveCategory}
               onToggleCategoryFeatured={handleToggleCategoryFeatured}
               onToggleCategoryHome={handleToggleCategoryHome}
+              onCategoriesUpdated={(newCats) => {
+                setCategories(newCats);
+                saveCategories(newCats);
+                if (onCategoriesUpdated) onCategoriesUpdated(newCats);
+              }}
             />
           )}
 
@@ -1116,6 +1123,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               onDuplicateProduct={handleDuplicateProduct}
               onToggleProductInStock={handleToggleProductInStock}
               onQuickChangeStockStatus={handleQuickChangeStockStatus}
+              onProductsUpdated={(newProds) => {
+                setProducts(newProds);
+                saveProducts(newProds);
+                if (onProductsUpdated) onProductsUpdated(newProds);
+              }}
             />
           )}
 
@@ -1152,6 +1164,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               onAddReview={handleAddReview}
               onUpdateReview={handleUpdateReview}
               onDeleteReview={handleDeleteReview}
+              onReviewsUpdated={(newRevs) => {
+                setReviews(newRevs);
+                saveReviews(newRevs);
+                if (onReviewsUpdated) onReviewsUpdated(newRevs);
+              }}
             />
           )}
 

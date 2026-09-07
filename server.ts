@@ -1117,6 +1117,231 @@ async function startServer() {
     });
   });
 
+  // Entity-specific export endpoint (Products, Categories, Reviews, Settings, All)
+  app.get('/api/admin/export/:entity', requireAdminAuth, (req, res) => {
+    const { entity } = req.params;
+    const format = (req.query.format as string) || 'json';
+    const dateStamp = new Date().toISOString().split('T')[0];
+
+    if (entity === 'products') {
+      if (format === 'csv') {
+        const headers = ['sku','title','categorySlug','category','subCategory','brand','powerRange','stockStatus','inStock','estimatedPrice','regularPrice','salePrice','material','thickness','dimensions','specs','description','imageUrl','id'];
+        const escapeCell = (v: any) => {
+          if (v === null || v === undefined) return '';
+          const s = String(v);
+          if (s.includes(',') || s.includes('"') || s.includes('\n')) return `"${s.replace(/"/g, '""')}"`;
+          return s;
+        };
+        const rows = [headers.join(',')];
+        for (const p of db.products) {
+          const specsStr = Array.isArray(p.specs) ? p.specs.join(' | ') : (p.specs || '');
+          rows.push([
+            escapeCell(p.sku || ''),
+            escapeCell(p.title || ''),
+            escapeCell(p.categorySlug || ''),
+            escapeCell(p.category || ''),
+            escapeCell(p.subCategory || ''),
+            escapeCell(p.brand || ''),
+            escapeCell(p.powerRange || ''),
+            escapeCell(p.stockStatus || (p.inStock ? 'In Stock' : 'Custom Order')),
+            escapeCell(p.inStock ? 'true' : 'false'),
+            escapeCell(p.estimatedPrice ?? ''),
+            escapeCell(p.regularPrice ?? ''),
+            escapeCell(p.salePrice ?? ''),
+            escapeCell(p.material || ''),
+            escapeCell(p.thickness || ''),
+            escapeCell(p.dimensions || ''),
+            escapeCell(specsStr),
+            escapeCell(p.description || ''),
+            escapeCell(p.imageUrl || ''),
+            escapeCell(p.id || '')
+          ].join(','));
+        }
+        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+        res.setHeader('Content-Disposition', `attachment; filename="nklaser-products-${dateStamp}.csv"`);
+        return res.send(rows.join('\n'));
+      }
+      return res.json({
+        version: '1.0',
+        entity: 'products',
+        exportedAt: new Date().toISOString(),
+        count: db.products.length,
+        products: db.products
+      });
+    }
+
+    if (entity === 'categories') {
+      return res.json({
+        version: '1.0',
+        entity: 'categories',
+        exportedAt: new Date().toISOString(),
+        count: db.categories.length,
+        categories: db.categories
+      });
+    }
+
+    if (entity === 'reviews') {
+      return res.json({
+        version: '1.0',
+        entity: 'reviews',
+        exportedAt: new Date().toISOString(),
+        count: db.reviews.length,
+        reviews: db.reviews
+      });
+    }
+
+    if (entity === 'settings') {
+      return res.json({
+        version: '1.0',
+        entity: 'settings',
+        exportedAt: new Date().toISOString(),
+        settings: db.settings
+      });
+    }
+
+    if (entity === 'all') {
+      return res.json({
+        version: db.version,
+        exportedAt: new Date().toISOString(),
+        appName: 'NK Laser Spares & Optics',
+        settings: db.settings,
+        products: db.products,
+        categories: db.categories,
+        brands: db.brands,
+        reviews: db.reviews,
+        inquiries: db.inquiries,
+        powerRanges: db.powerRanges
+      });
+    }
+
+    return res.status(400).json({ success: false, error: `Unknown export entity: ${entity}` });
+  });
+
+  // Entity-specific import endpoint (Products, Categories, Reviews, Settings)
+  app.post('/api/admin/import/:entity', requireAdminAuth, (req, res) => {
+    const { entity } = req.params;
+    const { data, mode = 'merge' } = req.body;
+
+    if (!data) {
+      return res.status(400).json({ success: false, error: 'Missing import data payload' });
+    }
+
+    const timestamp = new Date().toISOString();
+
+    if (entity === 'products') {
+      const incoming: any[] = Array.isArray(data) ? data : (Array.isArray(data.products) ? data.products : []);
+      if (!incoming.length) {
+        return res.status(400).json({ success: false, error: 'No products found in data payload' });
+      }
+
+      if (mode === 'replace') {
+        db.products = incoming;
+      } else {
+        const map = new Map<string, any>();
+        db.products.forEach(p => {
+          if (p.sku) map.set(p.sku.toLowerCase(), p);
+          map.set(p.id, p);
+        });
+        incoming.forEach(p => {
+          const keySku = p.sku?.toLowerCase();
+          if (keySku && map.has(keySku)) {
+            const old = map.get(keySku);
+            map.set(keySku, { ...old, ...p, id: old.id });
+          } else if (map.has(p.id)) {
+            const old = map.get(p.id);
+            map.set(p.id, { ...old, ...p });
+          } else {
+            map.set(p.id || `prod-${Date.now()}-${Math.random()}`, p);
+          }
+        });
+        db.products = Array.from(new Set(map.values()));
+      }
+
+      db.lastPublishedAt = timestamp;
+      persistDatabaseToDisk();
+      return res.json({
+        success: true,
+        message: `Successfully imported products (${mode}). Total count: ${db.products.length}`,
+        count: db.products.length,
+        items: db.products
+      });
+    }
+
+    if (entity === 'categories') {
+      const incoming: any[] = Array.isArray(data) ? data : (Array.isArray(data.categories) ? data.categories : []);
+      if (!incoming.length) {
+        return res.status(400).json({ success: false, error: 'No categories found in data payload' });
+      }
+
+      if (mode === 'replace') {
+        db.categories = incoming;
+      } else {
+        const map = new Map<string, any>();
+        db.categories.forEach(c => {
+          map.set(c.slug, c);
+          map.set(c.id, c);
+        });
+        incoming.forEach(c => {
+          if (map.has(c.slug)) {
+            const old = map.get(c.slug);
+            map.set(c.slug, { ...old, ...c, id: old.id });
+          } else {
+            map.set(c.slug, c);
+          }
+        });
+        db.categories = Array.from(new Set(map.values()));
+      }
+
+      db.lastPublishedAt = timestamp;
+      persistDatabaseToDisk();
+      return res.json({
+        success: true,
+        message: `Successfully imported categories (${mode}). Total count: ${db.categories.length}`,
+        count: db.categories.length,
+        items: db.categories
+      });
+    }
+
+    if (entity === 'reviews') {
+      const incoming: any[] = Array.isArray(data) ? data : (Array.isArray(data.reviews) ? data.reviews : []);
+      if (!incoming.length) {
+        return res.status(400).json({ success: false, error: 'No reviews found in data payload' });
+      }
+
+      if (mode === 'replace') {
+        db.reviews = incoming;
+      } else {
+        const map = new Map<string, any>();
+        db.reviews.forEach(r => map.set(r.id, r));
+        incoming.forEach(r => map.set(r.id || `rev-${Date.now()}-${Math.random()}`, r));
+        db.reviews = Array.from(map.values());
+      }
+
+      db.lastPublishedAt = timestamp;
+      persistDatabaseToDisk();
+      return res.json({
+        success: true,
+        message: `Successfully imported reviews (${mode}). Total count: ${db.reviews.length}`,
+        count: db.reviews.length,
+        items: db.reviews
+      });
+    }
+
+    if (entity === 'settings') {
+      const settingsPayload = data.settings || data;
+      db.settings = { ...db.settings, ...settingsPayload };
+      db.lastPublishedAt = timestamp;
+      persistDatabaseToDisk();
+      return res.json({
+        success: true,
+        message: 'Settings successfully updated and persisted on server',
+        settings: db.settings
+      });
+    }
+
+    return res.status(400).json({ success: false, error: `Unknown import entity: ${entity}` });
+  });
+
   // Backward compatibility routes for legacy local sync (Protected - requires admin auth)
   app.get('/api/config', requireAdminAuth, (req, res) => {
     res.json({

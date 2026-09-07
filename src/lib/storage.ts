@@ -859,6 +859,675 @@ export function setAdminSession(active: boolean): void {
 // =========================================================================
 
 /**
+ * Universal browser file download helper (uses Blob + ObjectURL for performance and safety)
+ */
+export function downloadFile(filename: string, content: string, mimeType: string = 'application/json'): void {
+  try {
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const downloadAnchor = document.createElement('a');
+    downloadAnchor.setAttribute('href', url);
+    downloadAnchor.setAttribute('download', filename);
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    downloadAnchor.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  } catch (e) {
+    console.error(`Error downloading file ${filename}:`, e);
+  }
+}
+
+/**
+ * Escapes a cell value for standard CSV formatting
+ */
+function escapeCsvCell(val: any): string {
+  if (val === null || val === undefined) return '';
+  const str = String(val);
+  if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
+    return `"${str.replace(/"/g, '""')}"`;
+  }
+  return str;
+}
+
+/**
+ * Parse CSV text into a 2D array of cells, handling quoted cells, commas, and newlines
+ */
+export function parseCsvText(text: string): string[][] {
+  const rows: string[][] = [];
+  let currentRow: string[] = [];
+  let currentCell = '';
+  let inQuotes = false;
+  
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+    const nextChar = text[i + 1];
+    
+    if (inQuotes) {
+      if (char === '"' && nextChar === '"') {
+        currentCell += '"';
+        i++; // skip escaped quote
+      } else if (char === '"') {
+        inQuotes = false;
+      } else {
+        currentCell += char;
+      }
+    } else {
+      if (char === '"') {
+        inQuotes = true;
+      } else if (char === ',') {
+        currentRow.push(currentCell.trim());
+        currentCell = '';
+      } else if (char === '\r') {
+        // ignore CR
+      } else if (char === '\n') {
+        currentRow.push(currentCell.trim());
+        if (currentRow.some(c => c.length > 0)) {
+          rows.push(currentRow);
+        }
+        currentRow = [];
+        currentCell = '';
+      } else {
+        currentCell += char;
+      }
+    }
+  }
+  if (currentCell || currentRow.length > 0) {
+    currentRow.push(currentCell.trim());
+    if (currentRow.some(c => c.length > 0)) {
+      rows.push(currentRow);
+    }
+  }
+  return rows;
+}
+
+/**
+ * Convert product list to standard CSV string
+ */
+export function productsToCsv(products: ProductItem[]): string {
+  const headers = [
+    'sku',
+    'title',
+    'categorySlug',
+    'category',
+    'subCategory',
+    'brand',
+    'powerRange',
+    'stockStatus',
+    'inStock',
+    'estimatedPrice',
+    'regularPrice',
+    'salePrice',
+    'material',
+    'thickness',
+    'dimensions',
+    'specs',
+    'description',
+    'imageUrl',
+    'id'
+  ];
+
+  const lines = [headers.join(',')];
+
+  for (const p of products) {
+    const specsStr = Array.isArray(p.specs) ? p.specs.join(' | ') : (p.specs || '');
+    const row = [
+      escapeCsvCell(p.sku || ''),
+      escapeCsvCell(p.title || ''),
+      escapeCsvCell(p.categorySlug || ''),
+      escapeCsvCell(p.category || ''),
+      escapeCsvCell(p.subCategory || ''),
+      escapeCsvCell(p.brand || ''),
+      escapeCsvCell(p.powerRange || ''),
+      escapeCsvCell(p.stockStatus || (p.inStock ? 'In Stock' : 'Custom Order')),
+      escapeCsvCell(p.inStock ? 'true' : 'false'),
+      escapeCsvCell(p.estimatedPrice ?? ''),
+      escapeCsvCell(p.regularPrice ?? ''),
+      escapeCsvCell(p.salePrice ?? ''),
+      escapeCsvCell(p.material || ''),
+      escapeCsvCell(p.thickness || ''),
+      escapeCsvCell(p.dimensions || ''),
+      escapeCsvCell(specsStr),
+      escapeCsvCell(p.description || ''),
+      escapeCsvCell(p.imageUrl || ''),
+      escapeCsvCell(p.id || '')
+    ];
+    lines.push(row.join(','));
+  }
+
+  return lines.join('\n');
+}
+
+/**
+ * Convert CSV text to list of partial product items
+ */
+export function csvToProducts(csvText: string): { products: Partial<ProductItem>[]; errors: string[] } {
+  const rows = parseCsvText(csvText);
+  if (rows.length < 2) {
+    return { products: [], errors: ['CSV file must have a header row and at least one data row.'] };
+  }
+
+  const rawHeaders = rows[0].map(h => h.toLowerCase().trim().replace(/[^a-z0-9]/g, ''));
+  const headerMap: Record<string, number> = {};
+  rawHeaders.forEach((h, idx) => {
+    headerMap[h] = idx;
+  });
+
+  const getCol = (row: string[], ...aliases: string[]): string => {
+    for (const alias of aliases) {
+      const clean = alias.toLowerCase().replace(/[^a-z0-9]/g, '');
+      if (clean in headerMap) {
+        const val = row[headerMap[clean]];
+        if (val !== undefined && val !== null) return val;
+      }
+    }
+    return '';
+  };
+
+  const parsedProducts: Partial<ProductItem>[] = [];
+  const errors: string[] = [];
+
+  for (let r = 1; r < rows.length; r++) {
+    const row = rows[r];
+    const title = getCol(row, 'title', 'producttitle', 'name', 'itemname');
+    const sku = getCol(row, 'sku', 'productsku', 'itemsku', 'partnumber');
+
+    if (!title && !sku) {
+      errors.push(`Row ${r + 1}: Skipped due to missing title or SKU.`);
+      continue;
+    }
+
+    const priceRaw = getCol(row, 'estimatedprice', 'price', 'estimate', 'cost');
+    const parsedPrice = priceRaw ? parseFloat(priceRaw.replace(/[^0-9.]/g, '')) : undefined;
+
+    const inStockRaw = getCol(row, 'instock', 'available', 'stock');
+    const inStock = inStockRaw.toLowerCase() === 'true' || inStockRaw === '1' || inStockRaw.toLowerCase() === 'yes';
+
+    const specsRaw = getCol(row, 'specs', 'specifications');
+    const specs = specsRaw ? specsRaw.split(/[|;]/).map(s => s.trim()).filter(Boolean) : [];
+
+    const item: Partial<ProductItem> = {
+      id: getCol(row, 'id') || `prod-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      sku: sku || `SKU-${Date.now()}-${r}`,
+      title: title || sku,
+      category: getCol(row, 'category', 'categoryname') || 'Laser Cutting Spares & Consumables',
+      categorySlug: getCol(row, 'categoryslug', 'slug', 'cat') || 'protective-lenses',
+      subCategory: getCol(row, 'subcategory', 'subcat') || undefined,
+      brand: getCol(row, 'brand', 'oem', 'compatiblebrand') || 'RayTools',
+      powerRange: getCol(row, 'powerrange', 'power', 'wattage') || '1kW - 6kW',
+      stockStatus: (getCol(row, 'stockstatus') as any) || (inStock ? 'In Stock' : 'Custom Order'),
+      inStock: inStock || (getCol(row, 'stockstatus') === 'In Stock'),
+      estimatedPrice: Number.isFinite(parsedPrice) ? parsedPrice : undefined,
+      material: getCol(row, 'material') || 'Optical Glass',
+      thickness: getCol(row, 'thickness') || 'Standard',
+      dimensions: getCol(row, 'dimensions', 'size') || undefined,
+      specs: specs.length > 0 ? specs : ['High Optical Purity', 'OEM Fitment Guaranteed'],
+      description: getCol(row, 'description', 'desc') || `${title || sku} - Industrial laser cutting spare part.`,
+      imageUrl: getCol(row, 'imageurl', 'image', 'photo') || 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=600&q=80'
+    };
+
+    parsedProducts.push(item);
+  }
+
+  return { products: parsedProducts, errors };
+}
+
+/**
+ * Export products in JSON or CSV format
+ */
+export function exportProducts(format: 'json' | 'csv' = 'json'): string {
+  const prods = loadProducts();
+  if (format === 'csv') {
+    return productsToCsv(prods);
+  }
+  return JSON.stringify({
+    version: '1.0',
+    entity: 'products',
+    exportedAt: new Date().toISOString(),
+    count: prods.length,
+    products: prods
+  }, null, 2);
+}
+
+/**
+ * Trigger download of products file in browser
+ */
+export function downloadProductsFile(format: 'json' | 'csv' = 'json'): void {
+  const content = exportProducts(format);
+  const dateStamp = new Date().toISOString().split('T')[0];
+  const filename = `nklaser-products-${dateStamp}.${format}`;
+  const mime = format === 'csv' ? 'text/csv;charset=utf-8;' : 'application/json';
+  downloadFile(filename, content, mime);
+}
+
+/**
+ * Import products from array, JSON string, or CSV text with merge/replace mode
+ */
+export function importProducts(
+  data: any[] | string,
+  mode: 'merge' | 'replace' = 'merge'
+): { success: boolean; message: string; count: number; products: ProductItem[]; errors?: string[] } {
+  try {
+    let rawItems: any[] = [];
+    const parseErrors: string[] = [];
+
+    if (typeof data === 'string') {
+      const trimmed = data.trim();
+      if (trimmed.startsWith('[') || (trimmed.startsWith('{') && trimmed.includes('"products"'))) {
+        // JSON parsing
+        const parsed = JSON.parse(trimmed);
+        rawItems = Array.isArray(parsed) ? parsed : (Array.isArray(parsed.products) ? parsed.products : []);
+      } else {
+        // CSV parsing
+        const { products: csvItems, errors } = csvToProducts(trimmed);
+        rawItems = csvItems;
+        parseErrors.push(...errors);
+      }
+    } else if (Array.isArray(data)) {
+      rawItems = data;
+    } else if (data && typeof data === 'object' && Array.isArray((data as any).products)) {
+      rawItems = (data as any).products;
+    }
+
+    if (!rawItems || rawItems.length === 0) {
+      return { 
+        success: false, 
+        message: 'No valid products found in imported data.', 
+        count: 0, 
+        products: loadProducts(),
+        errors: parseErrors.length > 0 ? parseErrors : ['Empty or unparseable dataset.']
+      };
+    }
+
+    // Save pre-import snapshot
+    saveConfigurationSnapshot(`Auto-backup before products ${mode}`);
+
+    const existing = loadProducts();
+    const validatedProducts: ProductItem[] = [];
+
+    for (let i = 0; i < rawItems.length; i++) {
+      const item = rawItems[i];
+      if (!item || typeof item !== 'object') continue;
+      const title = item.title || item.name || item.sku || `Product ${i + 1}`;
+      const sku = item.sku || `SKU-${Date.now()}-${i + 1}`;
+      const id = item.id || `prod-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+
+      const prod: ProductItem = {
+        id,
+        sku,
+        title,
+        category: item.category || 'Laser Cutting Spares & Consumables',
+        categorySlug: item.categorySlug || 'protective-lenses',
+        subCategory: item.subCategory || undefined,
+        brand: item.brand || 'RayTools',
+        compatibleBrands: Array.isArray(item.compatibleBrands) ? item.compatibleBrands : (item.brand ? [item.brand] : ['RayTools']),
+        powerRange: item.powerRange || '1kW - 6kW',
+        stockStatus: item.stockStatus || (item.inStock ? 'In Stock' : 'Direct Import Stock'),
+        inStock: item.inStock !== undefined ? Boolean(item.inStock) : (item.stockStatus === 'In Stock'),
+        estimatedPrice: typeof item.estimatedPrice === 'number' ? item.estimatedPrice : (parseFloat(item.estimatedPrice) || undefined),
+        regularPrice: typeof item.regularPrice === 'number' ? item.regularPrice : (parseFloat(item.regularPrice) || undefined),
+        salePrice: typeof item.salePrice === 'number' ? item.salePrice : (parseFloat(item.salePrice) || undefined),
+        material: item.material || 'Optical Glass',
+        thickness: item.thickness || 'Standard',
+        dimensions: item.dimensions || undefined,
+        specs: Array.isArray(item.specs) ? item.specs : ['High Optical Purity', 'OEM Fitment Guaranteed'],
+        description: item.description || `${title} - High quality fiber laser consumable.`,
+        imageUrl: item.imageUrl || 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=600&q=80',
+        galleryImages: Array.isArray(item.galleryImages) ? item.galleryImages : undefined,
+        isPopular: Boolean(item.isPopular),
+        isFeatured: Boolean(item.isFeatured)
+      };
+      validatedProducts.push(prod);
+    }
+
+    let finalList: ProductItem[];
+    if (mode === 'replace') {
+      finalList = validatedProducts;
+    } else {
+      // Merge mode: map existing products by sku or id
+      const map = new Map<string, ProductItem>();
+      existing.forEach(p => {
+        if (p.sku) map.set(p.sku.toLowerCase(), p);
+        map.set(p.id, p);
+      });
+
+      validatedProducts.forEach(newP => {
+        const keySku = newP.sku?.toLowerCase();
+        if (keySku && map.has(keySku)) {
+          const old = map.get(keySku)!;
+          const merged = { ...old, ...newP, id: old.id };
+          map.set(keySku, merged);
+          map.set(old.id, merged);
+        } else if (map.has(newP.id)) {
+          const old = map.get(newP.id)!;
+          const merged = { ...old, ...newP };
+          map.set(newP.id, merged);
+          if (merged.sku) map.set(merged.sku.toLowerCase(), merged);
+        } else {
+          map.set(newP.id, newP);
+          if (newP.sku) map.set(newP.sku.toLowerCase(), newP);
+        }
+      });
+
+      finalList = Array.from(new Set(map.values()));
+    }
+
+    saveProducts(finalList);
+    pushConfigurationToServer().catch(err => console.warn('Could not sync imported products to server:', err));
+
+    return {
+      success: true,
+      message: `Successfully imported ${validatedProducts.length} products (${mode === 'merge' ? 'merged with catalog' : 'replaced entire catalog'}). Total products now: ${finalList.length}.`,
+      count: finalList.length,
+      products: finalList,
+      errors: parseErrors.length > 0 ? parseErrors : undefined
+    };
+  } catch (err: any) {
+    console.error('Error importing products:', err);
+    return {
+      success: false,
+      message: `Failed to import products: ${err.message || 'Unknown error'}`,
+      count: 0,
+      products: loadProducts(),
+      errors: [err.message]
+    };
+  }
+}
+
+/**
+ * Export categories as JSON string
+ */
+export function exportCategories(): string {
+  const cats = loadCategories();
+  return JSON.stringify({
+    version: '1.0',
+    entity: 'categories',
+    exportedAt: new Date().toISOString(),
+    count: cats.length,
+    categories: cats
+  }, null, 2);
+}
+
+/**
+ * Trigger download of categories JSON file
+ */
+export function downloadCategoriesFile(): void {
+  const content = exportCategories();
+  const dateStamp = new Date().toISOString().split('T')[0];
+  downloadFile(`nklaser-categories-${dateStamp}.json`, content, 'application/json');
+}
+
+/**
+ * Import categories from JSON string or array
+ */
+export function importCategories(
+  data: any[] | string,
+  mode: 'merge' | 'replace' = 'merge'
+): { success: boolean; message: string; count: number; categories: ProductCategoryDef[]; errors?: string[] } {
+  try {
+    let rawCats: any[] = [];
+    if (typeof data === 'string') {
+      const parsed = JSON.parse(data);
+      rawCats = Array.isArray(parsed) ? parsed : (Array.isArray(parsed.categories) ? parsed.categories : []);
+    } else if (Array.isArray(data)) {
+      rawCats = data;
+    } else if (data && typeof data === 'object' && Array.isArray((data as any).categories)) {
+      rawCats = (data as any).categories;
+    }
+
+    if (!rawCats || rawCats.length === 0) {
+      return { success: false, message: 'No valid categories found in imported data.', count: 0, categories: loadCategories() };
+    }
+
+    saveConfigurationSnapshot(`Auto-backup before categories ${mode}`);
+    const existing = loadCategories();
+    const validated: ProductCategoryDef[] = [];
+
+    for (let i = 0; i < rawCats.length; i++) {
+      const c = rawCats[i];
+      if (!c || typeof c !== 'object') continue;
+      const name = c.name || c.title || `Category ${i + 1}`;
+      const slug = c.slug || name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+      const id = c.id || `cat-${slug}`;
+
+      validated.push({
+        id,
+        slug,
+        name,
+        shortTitle: c.shortTitle || name,
+        description: c.description || `Industrial ${name} for fiber laser cutting heads.`,
+        iconName: c.iconName || 'Wrench',
+        imageUrl: c.imageUrl || 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=600&q=80',
+        subCategories: Array.isArray(c.subCategories) ? c.subCategories.filter(Boolean) : ['Standard Series'],
+        oemBrands: Array.isArray(c.oemBrands) ? c.oemBrands.filter(Boolean) : ['RayTools', 'OSPRI'],
+        powerRanges: Array.isArray(c.powerRanges) ? c.powerRanges : undefined,
+        featured: c.featured !== undefined ? Boolean(c.featured) : true,
+        showOnHome: c.showOnHome !== undefined ? Boolean(c.showOnHome) : true
+      });
+    }
+
+    let finalList: ProductCategoryDef[];
+    if (mode === 'replace') {
+      finalList = validated;
+    } else {
+      const map = new Map<string, ProductCategoryDef>();
+      existing.forEach(cat => {
+        map.set(cat.slug, cat);
+        map.set(cat.id, cat);
+      });
+
+      validated.forEach(newCat => {
+        if (map.has(newCat.slug)) {
+          const old = map.get(newCat.slug)!;
+          const merged = { ...old, ...newCat, id: old.id };
+          map.set(newCat.slug, merged);
+          map.set(old.id, merged);
+        } else if (map.has(newCat.id)) {
+          const old = map.get(newCat.id)!;
+          const merged = { ...old, ...newCat };
+          map.set(newCat.id, merged);
+          map.set(merged.slug, merged);
+        } else {
+          map.set(newCat.slug, newCat);
+          map.set(newCat.id, newCat);
+        }
+      });
+
+      finalList = Array.from(new Set(map.values()));
+    }
+
+    saveCategories(finalList);
+    pushConfigurationToServer().catch(err => console.warn('Could not sync categories to server:', err));
+
+    return {
+      success: true,
+      message: `Successfully imported ${validated.length} categories (${mode === 'merge' ? 'merged' : 'replaced'}). Total: ${finalList.length}.`,
+      count: finalList.length,
+      categories: finalList
+    };
+  } catch (err: any) {
+    console.error('Error importing categories:', err);
+    return { success: false, message: `Failed to import categories: ${err.message || 'Unknown error'}`, count: 0, categories: loadCategories() };
+  }
+}
+
+/**
+ * Export reviews as JSON string
+ */
+export function exportReviews(): string {
+  const revs = loadReviews();
+  return JSON.stringify({
+    version: '1.0',
+    entity: 'reviews',
+    exportedAt: new Date().toISOString(),
+    count: revs.length,
+    reviews: revs
+  }, null, 2);
+}
+
+/**
+ * Trigger download of reviews JSON file
+ */
+export function downloadReviewsFile(): void {
+  const content = exportReviews();
+  const dateStamp = new Date().toISOString().split('T')[0];
+  downloadFile(`nklaser-reviews-${dateStamp}.json`, content, 'application/json');
+}
+
+/**
+ * Import reviews from JSON string or array
+ */
+export function importReviews(
+  data: any[] | string,
+  mode: 'merge' | 'replace' = 'merge'
+): { success: boolean; message: string; count: number; reviews: ReviewItem[]; errors?: string[] } {
+  try {
+    let rawReviews: any[] = [];
+    if (typeof data === 'string') {
+      const parsed = JSON.parse(data);
+      rawReviews = Array.isArray(parsed) ? parsed : (Array.isArray(parsed.reviews) ? parsed.reviews : []);
+    } else if (Array.isArray(data)) {
+      rawReviews = data;
+    } else if (data && typeof data === 'object' && Array.isArray((data as any).reviews)) {
+      rawReviews = (data as any).reviews;
+    }
+
+    if (!rawReviews || rawReviews.length === 0) {
+      return { success: false, message: 'No valid reviews found in imported data.', count: 0, reviews: loadReviews() };
+    }
+
+    saveConfigurationSnapshot(`Auto-backup before reviews ${mode}`);
+    const existing = loadReviews();
+    const validated: ReviewItem[] = [];
+
+    for (let i = 0; i < rawReviews.length; i++) {
+      const r = rawReviews[i];
+      if (!r || typeof r !== 'object') continue;
+      const clientName = r.clientName || r.name || `Client ${i + 1}`;
+      const comment = r.comment || r.feedback || r.text || 'Excellent laser cutting spares and fast delivery.';
+      const rating = Math.min(5, Math.max(1, Number(r.rating) || 5));
+
+      validated.push({
+        id: r.id || `rev-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+        clientName,
+        companyName: r.companyName || r.company || 'Industrial Engineering Works',
+        location: r.location || r.city || 'India',
+        rating,
+        comment,
+        date: r.date || new Date().toISOString().split('T')[0],
+        projectType: r.projectType || 'Fiber Laser Spares & Optics',
+        verified: r.verified !== undefined ? Boolean(r.verified) : true,
+        avatarUrl: r.avatarUrl || undefined
+      });
+    }
+
+    let finalList: ReviewItem[];
+    if (mode === 'replace') {
+      finalList = validated;
+    } else {
+      const map = new Map<string, ReviewItem>();
+      existing.forEach(r => map.set(r.id, r));
+      validated.forEach(r => {
+        // match by id or (clientName + date)
+        const matchKey = Array.from(map.values()).find(
+          old => old.clientName.toLowerCase() === r.clientName.toLowerCase() && old.date === r.date
+        );
+        if (matchKey) {
+          map.set(matchKey.id, { ...matchKey, ...r, id: matchKey.id });
+        } else {
+          map.set(r.id, r);
+        }
+      });
+      finalList = Array.from(map.values());
+    }
+
+    saveReviews(finalList);
+    pushConfigurationToServer().catch(err => console.warn('Could not sync reviews to server:', err));
+
+    return {
+      success: true,
+      message: `Successfully imported ${validated.length} reviews (${mode === 'merge' ? 'merged' : 'replaced'}). Total: ${finalList.length}.`,
+      count: finalList.length,
+      reviews: finalList
+    };
+  } catch (err: any) {
+    console.error('Error importing reviews:', err);
+    return { success: false, message: `Failed to import reviews: ${err.message || 'Unknown error'}`, count: 0, reviews: loadReviews() };
+  }
+}
+
+/**
+ * Export site settings as JSON string
+ */
+export function exportSiteSettings(): string {
+  const settings = loadSiteSettings();
+  return JSON.stringify({
+    version: '1.0',
+    entity: 'settings',
+    exportedAt: new Date().toISOString(),
+    settings
+  }, null, 2);
+}
+
+/**
+ * Trigger download of site settings JSON file
+ */
+export function downloadSiteSettingsFile(): void {
+  const content = exportSiteSettings();
+  const dateStamp = new Date().toISOString().split('T')[0];
+  downloadFile(`nklaser-settings-${dateStamp}.json`, content, 'application/json');
+}
+
+/**
+ * Import site settings from JSON string or object
+ */
+export function importSiteSettings(
+  data: any | string
+): { success: boolean; message: string; settings: SiteSettings; errors?: string[] } {
+  try {
+    let rawSettings: any = null;
+    if (typeof data === 'string') {
+      const parsed = JSON.parse(data);
+      rawSettings = parsed && typeof parsed === 'object' && parsed.settings ? parsed.settings : parsed;
+    } else if (data && typeof data === 'object') {
+      rawSettings = data.settings || data;
+    }
+
+    if (!rawSettings || typeof rawSettings !== 'object') {
+      return { success: false, message: 'Invalid settings JSON object.', settings: loadSiteSettings() };
+    }
+
+    saveConfigurationSnapshot('Auto-backup before settings import');
+
+    const addresses = normalizeAddresses(rawSettings.addresses, rawSettings.address);
+    const primaryAddr = addresses.find(a => a.isPrimary) || addresses[0];
+
+    const current = loadSiteSettings();
+    const normalized: SiteSettings = {
+      ...DEFAULT_SITE_SETTINGS,
+      ...current,
+      ...rawSettings,
+      address: primaryAddr?.addressLine || rawSettings.address || current.address,
+      addresses,
+      themeMode: 'light',
+      primaryColor: '#162657',
+      accentColor: '#E51024'
+    };
+
+    saveSiteSettings(normalized);
+    pushConfigurationToServer().catch(err => console.warn('Could not sync settings to server:', err));
+
+    return {
+      success: true,
+      message: 'Site settings and brand configurations imported successfully.',
+      settings: normalized
+    };
+  } catch (err: any) {
+    console.error('Error importing settings:', err);
+    return { success: false, message: `Failed to import settings: ${err.message || 'Unknown error'}`, settings: loadSiteSettings() };
+  }
+}
+
+/**
  * Export complete application configuration as a structured JSON object.
  * Strictly excludes administrative credentials, password hashes, and encryption keys.
  */
@@ -883,14 +1552,8 @@ export function exportFullConfiguration(): FullAppConfigurationBackup {
 export function downloadConfigurationBackupFile(): void {
   try {
     const config = exportFullConfiguration();
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(config, null, 2));
-    const downloadAnchor = document.createElement('a');
     const dateStamp = new Date().toISOString().split('T')[0];
-    downloadAnchor.setAttribute("href", dataStr);
-    downloadAnchor.setAttribute("download", `nklaser-full-backup-${dateStamp}.json`);
-    document.body.appendChild(downloadAnchor);
-    downloadAnchor.click();
-    downloadAnchor.remove();
+    downloadFile(`nklaser-full-backup-${dateStamp}.json`, JSON.stringify(config, null, 2), 'application/json');
   } catch (e) {
     console.error('Error downloading configuration backup:', e);
   }
