@@ -35,9 +35,9 @@ Automatic builds and zero-downtime deployments every time you push code to GitHu
    - In the left sidebar, navigate to **Workers & Pages** > **Overview** > **Create application** > **Pages** > **Connect to Git**.
 
 3. **Select Repository & Configure Build**:
-   - Select your `nk-laser-spares` repository.
+   - Select your `nk-laser` repository.
    - Configure the build settings:
-     - **Project name**: `nk-laser-spares` (or your preferred name)
+     - **Project name**: `nk-laser` (or your preferred name)
      - **Production branch**: `main`
      - **Framework preset**: `Vite`
      - **Build command**: `npm run build`
@@ -48,7 +48,7 @@ Automatic builds and zero-downtime deployments every time you push code to GitHu
 4. **Deploy**:
    - Click **Save and Deploy**.
    - Cloudflare will build the Vite bundle and deploy it globally across 300+ edge data centers.
-   - You will receive an instant live URL like `https://nk-laser-spares.pages.dev`.
+   - You will receive an instant live URL like `https://nk-laser.pages.dev`.
 
 5. **Custom Domain (Free)**:
    - Go to your Pages project > **Custom domains** > **Set up a custom domain**.
@@ -66,7 +66,7 @@ npm install
 npm run build
 
 # 2. Deploy directly to Cloudflare Pages (Free)
-npx wrangler pages deploy dist --project-name=nk-laser-spares
+npx wrangler pages deploy dist --project-name=nk-laser
 ```
 
 Follow the browser prompt on first use to authenticate your Cloudflare account.
@@ -81,7 +81,7 @@ To protect sensitive keys, never commit plaintext credentials to Git. Use Cloudf
 Generate a Bcrypt hash with work factor 12 (e.g., using `bcryptjs` or standard CLI tools):
 ```bash
 # Set secret via Wrangler CLI:
-npx wrangler secret put ADMIN_PASSWORD_HASH --project-name=nk-laser-spares
+npx wrangler secret put ADMIN_PASSWORD_HASH --project-name=nk-laser
 # Prompt: Enter the bcrypt hash (e.g. $2a$12$...)
 ```
 
@@ -92,7 +92,7 @@ Generate a 32-byte hexadecimal encryption key for encrypting customer contact de
 openssl rand -hex 32
 
 # Store in Cloudflare Secrets:
-npx wrangler secret put ENCRYPTION_KEY --project-name=nk-laser-spares
+npx wrangler secret put ENCRYPTION_KEY --project-name=nk-laser
 ```
 
 ---
@@ -108,7 +108,7 @@ npx wrangler d1 create nk_laser_db
 
 ### 2. Add binding in `wrangler.toml`:
 ```toml
-name = "nk-laser-spares"
+name = "nk-laser"
 compatibility_date = "2024-01-01"
 
 [[d1_databases]]
@@ -201,13 +201,13 @@ Search engines and AI indexing bots are dynamically served pre-rendered semantic
 ### Edge Verification Commands:
 ```bash
 # Test bot pre-rendering locally or on Pages URL
-curl -s -i -H "User-Agent: Googlebot/2.1" https://nk-laser-spares.pages.dev/product/nkl-clk-101
+curl -s -i -H "User-Agent: Googlebot/2.1" https://nk-laser.pages.dev/product/nkl-clk-101
 
 # Verify dynamic sitemap
-curl -s https://nk-laser-spares.pages.dev/sitemap.xml | head -n 30
+curl -s https://nk-laser.pages.dev/sitemap.xml | head -n 30
 
 # Verify AI documentation
-curl -s https://nk-laser-spares.pages.dev/llms.txt
+curl -s https://nk-laser.pages.dev/llms.txt
 ```
 
 ---
