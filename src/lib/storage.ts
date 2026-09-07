@@ -318,14 +318,24 @@ function sanitizeCodText(text?: string): string | undefined {
     .trim();
 }
 
+let cachedSiteSettings: SiteSettings | null = null;
+
+export function invalidateSettingsCache(): void {
+  cachedSiteSettings = null;
+}
+
 export function loadSiteSettings(): SiteSettings {
+  if (cachedSiteSettings) {
+    return cachedSiteSettings;
+  }
+
   try {
     const saved = safeStorage.getItem(KEYS.SETTINGS);
     if (saved) {
       const parsed = JSON.parse(saved);
       const addresses = normalizeAddresses(parsed.addresses, parsed.address);
       const primaryAddr = addresses.find(a => a.isPrimary) || addresses[0];
-      return {
+      const result: SiteSettings = {
         ...DEFAULT_SITE_SETTINGS,
         ...parsed,
         heroSubtitle: sanitizeCodText(parsed.heroSubtitle) || DEFAULT_SITE_SETTINGS.heroSubtitle,
@@ -346,6 +356,8 @@ export function loadSiteSettings(): SiteSettings {
           ...(parsed.sectionsVisibility || {})
         }
       };
+      cachedSiteSettings = result;
+      return result;
     }
 
     // Migration fallback from v1
@@ -377,17 +389,21 @@ export function loadSiteSettings(): SiteSettings {
         }
       };
       saveSiteSettings(migrated);
+      cachedSiteSettings = migrated;
       return migrated;
     }
   } catch (e) {
     console.error('Error loading site settings:', e);
   }
-  return {
+
+  const fallback: SiteSettings = {
     ...DEFAULT_SITE_SETTINGS,
     themeMode: 'light',
     primaryColor: '#162657',
     accentColor: '#E51024'
   };
+  cachedSiteSettings = fallback;
+  return fallback;
 }
 
 export function saveSiteSettings(settings: SiteSettings): void {
@@ -398,6 +414,7 @@ export function saveSiteSettings(settings: SiteSettings): void {
       primaryColor: '#162657',
       accentColor: '#E51024'
     };
+    cachedSiteSettings = normalized;
     safeStorage.setItem(KEYS.SETTINGS, JSON.stringify(normalized));
     pushConfigurationToServer().catch(() => {});
   } catch (e) {

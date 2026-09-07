@@ -130,6 +130,39 @@ export interface ProductSpecPair {
   value: string;
 }
 
+export type ProductTemplateId = 
+  | 'none'
+  | 'simple'
+  | 'specs'
+  | 'badge-hero'
+  | 'dark-carbon'
+  | 'blueprint';
+
+export type ProductTemplateIconType = 'diameter' | 'height' | 'power' | 'qty' | 'generic';
+
+export interface ProductTemplateSpecItem {
+  label: string;
+  value?: string;
+  icon?: ProductTemplateIconType;
+}
+
+export type ProductTemplateLogoPreset = 
+  | 'official-badge'
+  | 'white-minimal'
+  | 'red-accent'
+  | 'custom';
+
+export interface ProductTemplateConfig {
+  templateId: ProductTemplateId;
+  logoSrc?: string;
+  logoAlt?: string;
+  logoPreset?: ProductTemplateLogoPreset;
+  sizeText?: string;
+  websiteText?: string;
+  footerTagline?: string;
+  specs?: ProductTemplateSpecItem[];
+}
+
 export interface ProductItem {
   id: string;
   sku?: string;
@@ -159,6 +192,7 @@ export interface ProductItem {
   variants?: string;
   originalUrl?: string;
   moq?: number;
+  templateConfig?: ProductTemplateConfig;
 }
 
 export interface BrandItem {
@@ -212,6 +246,14 @@ export interface BusinessAddress {
   mapUrl?: string; // Google Maps link or directions URL
 }
 
+export interface TemplateLogoPresetConfig {
+  'official-badge'?: string;
+  'white-minimal'?: string;
+  'red-accent'?: string;
+  'custom'?: string;
+  [key: string]: string | undefined;
+}
+
 export interface SiteSettings {
   businessName: string;
   tagline: string;
@@ -249,6 +291,7 @@ export interface SiteSettings {
     whatsappChat?: boolean;
     calculator?: boolean;
   };
+  templateLogoPresets?: TemplateLogoPresetConfig;
   adminSecretKey?: string; // Obfuscated entry portal key (e.g. 'nk-vault-9921-x')
 }
 

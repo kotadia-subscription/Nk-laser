@@ -1,0 +1,686 @@
+:root {
+  --nkl-navy-950: #07162f;
+  --nkl-navy-900: #0a2146;
+  --nkl-blue-800: #103d79;
+  --nkl-blue-700: #1555a3;
+  --nkl-red: #ff1634;
+  --nkl-white: #ffffff;
+  --nkl-soft: #edf3fa;
+  --nkl-muted: #aab8cb;
+  --nkl-border: rgba(93, 160, 236, 0.45);
+}
+
+.nkl-card-container {
+  container-type: inline-size;
+  container-name: nklcard;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nkl-card {
+  position: relative;
+  isolation: isolate;
+  width: 100%;
+  max-width: 1200px;
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  border-radius: clamp(16px, 3.5cqw, 44px);
+  padding: clamp(12px, 3.2cqw, 38px) clamp(12px, 3cqw, 36px) 0;
+  background:
+    radial-gradient(circle at 36% 12%, rgba(18, 99, 190, 0.28), transparent 28%),
+    linear-gradient(145deg, #0b2e60 0%, #0b3a77 34%, #071b3d 72%, #06142c 100%);
+  color: var(--nkl-white);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  box-shadow: 0 24px 60px rgba(4, 21, 49, 0.24);
+  box-sizing: border-box;
+}
+
+/* Base background shapes */
+.nkl-bg-shape {
+  position: absolute;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.26;
+  background: linear-gradient(145deg, rgba(24, 108, 207, 0.68), rgba(8, 35, 76, 0.15));
+}
+
+.nkl-bg-shape--left {
+  width: clamp(100px, 30cqw, 370px);
+  height: clamp(80px, 20cqw, 240px);
+  left: 3%;
+  top: -5%;
+  transform: rotate(45deg);
+  border-radius: 26px;
+}
+
+.nkl-bg-shape--right {
+  width: clamp(100px, 26cqw, 320px);
+  height: clamp(100px, 26cqw, 320px);
+  right: 2%;
+  top: -4%;
+  transform: rotate(45deg);
+  border-radius: 30px;
+}
+
+/* Header */
+.nkl-header {
+  height: clamp(38px, 16cqw, 196px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  z-index: 1;
+}
+
+.nkl-logo {
+  width: min(300px, 38%);
+  max-height: 85%;
+  object-fit: contain;
+  object-position: center;
+  display: block;
+  filter: drop-shadow(0 5px 10px rgba(0, 0, 0, 0.22));
+}
+
+.nkl-logo--simple {
+  width: min(320px, 42%);
+}
+
+/* Content */
+.nkl-content {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+}
+
+.nkl-content--two-col {
+  display: grid;
+  grid-template-columns: 1.58fr 0.92fr;
+  gap: clamp(6px, 1.2cqw, 14px);
+  align-items: stretch;
+}
+
+.nkl-product-panel,
+.nkl-spec-panel {
+  min-width: 0;
+}
+
+.nkl-title-bar {
+  min-height: clamp(24px, 6.2cqw, 74px);
+  display: flex;
+  align-items: center;
+  gap: clamp(6px, 2cqw, 24px);
+  padding: 0 clamp(8px, 2.5cqw, 30px);
+  border: 1px solid rgba(70, 150, 235, 0.55);
+  border-bottom: 0;
+  border-radius: clamp(8px, 2cqw, 24px) clamp(8px, 2cqw, 24px) 0 0;
+  background: linear-gradient(115deg, rgba(8, 34, 75, 0.98), rgba(12, 49, 99, 0.94));
+}
+
+.nkl-title-bar h1,
+.nkl-section-title h2 {
+  margin: 0;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.nkl-title-bar h1 {
+  font-size: clamp(10px, 2.4cqw, 32px);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nkl-red-mark {
+  width: clamp(3px, 0.6cqw, 7px);
+  height: clamp(14px, 3.2cqw, 38px);
+  flex: 0 0 clamp(3px, 0.6cqw, 7px);
+  border-radius: 2px;
+  background: var(--nkl-red);
+  box-shadow: 0 0 12px rgba(255, 22, 52, 0.35);
+}
+
+.nkl-image-card {
+  position: relative;
+  height: clamp(120px, 50cqw, 642px);
+  overflow: hidden;
+  background: #ffffff;
+  border-radius: 0 0 clamp(8px, 2.2cqw, 26px) clamp(8px, 2.2cqw, 26px);
+  box-shadow: 0 24px 46px rgba(1, 13, 33, 0.28);
+}
+
+.nkl-image-card::after {
+  content: "";
+  position: absolute;
+  inset: clamp(6px, 2cqw, 24px);
+  border: clamp(1px, 0.2cqw, 2px) dashed #dbe3ee;
+  border-radius: clamp(6px, 1.8cqw, 22px);
+  pointer-events: none;
+}
+
+.nkl-product-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  padding: clamp(8px, 3.6cqw, 44px);
+  transition: transform 0.3s ease;
+}
+
+.nkl-placeholder {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  text-align: center;
+  color: #496080;
+  z-index: 1;
+}
+
+.nkl-placeholder-icon {
+  width: clamp(24px, 7cqw, 92px);
+  margin: 0 auto clamp(4px, 1cqw, 14px);
+  color: #c9d3e0;
+}
+
+.nkl-placeholder-icon svg {
+  width: 100%;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.nkl-placeholder-title {
+  font-size: clamp(10px, 1.8cqw, 22px);
+  line-height: 1.2;
+  font-weight: 700;
+}
+
+.nkl-placeholder-subtitle {
+  margin-top: 2px;
+  font-size: clamp(8px, 1.2cqw, 15px);
+  color: #b1bdcc;
+}
+
+/* Specs Panel (Compact & Sized Proportionately) */
+.nkl-spec-panel {
+  display: flex;
+  flex-direction: column;
+  height: clamp(120px, 48cqw, 640px);
+  padding: clamp(6px, 1.5cqw, 18px) clamp(5px, 1.2cqw, 14px);
+  border: 1px solid rgba(62, 143, 233, 0.68);
+  border-radius: clamp(8px, 1.8cqw, 20px);
+  background: linear-gradient(180deg, rgba(15, 57, 117, 0.66), rgba(9, 35, 77, 0.76));
+  box-shadow: inset 0 0 28px rgba(28, 96, 179, 0.08);
+  box-sizing: border-box;
+}
+
+.nkl-section-title {
+  display: flex;
+  align-items: center;
+  gap: clamp(4px, 1cqw, 12px);
+  margin: 0 clamp(2px, 0.5cqw, 6px) clamp(6px, 1.2cqw, 16px);
+}
+
+.nkl-section-title h2 {
+  font-size: clamp(8px, 1.5cqw, 20px);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.nkl-spec-list {
+  display: grid;
+  gap: clamp(3px, 0.9cqw, 10px);
+  flex: 1;
+}
+
+.nkl-spec-row {
+  display: grid;
+  grid-template-columns: clamp(16px, 3.6cqw, 42px) minmax(26px, 1fr) clamp(4px, 0.8cqw, 10px) minmax(32px, 1.2fr);
+  align-items: center;
+  gap: clamp(2px, 0.6cqw, 8px);
+  padding: clamp(2px, 0.6cqw, 8px) clamp(4px, 0.9cqw, 10px);
+  border: 1px solid rgba(83, 151, 231, 0.32);
+  border-radius: clamp(6px, 1.2cqw, 14px);
+  background: linear-gradient(110deg, rgba(24, 77, 149, 0.55), rgba(12, 41, 88, 0.42));
+}
+
+.nkl-spec-icon {
+  width: clamp(16px, 3.4cqw, 40px);
+  height: clamp(16px, 3.4cqw, 40px);
+  display: grid;
+  place-items: center;
+  border-radius: clamp(4px, 1cqw, 12px);
+  background: rgba(7, 31, 71, 0.9);
+  color: #5da0ec;
+}
+
+.nkl-spec-icon svg {
+  width: clamp(10px, 2cqw, 20px);
+  height: clamp(10px, 2cqw, 20px);
+}
+
+.nkl-spec-label {
+  font-size: clamp(7px, 1.15cqw, 15px);
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nkl-spec-colon {
+  font-size: clamp(7px, 1.3cqw, 18px);
+  font-weight: 700;
+  text-align: center;
+}
+
+.nkl-spec-value {
+  min-height: clamp(15px, 3.4cqw, 42px);
+  display: flex;
+  align-items: center;
+  padding: clamp(1px, 0.4cqw, 6px) clamp(4px, 0.8cqw, 10px);
+  border-radius: clamp(4px, 1cqw, 10px);
+  background: #ffffff;
+  color: #203654;
+  font-size: clamp(7px, 1.15cqw, 14px);
+  font-weight: 700;
+  box-shadow: 0 3px 8px rgba(2, 15, 35, 0.12);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nkl-spec-value.is-empty {
+  color: transparent;
+}
+
+/* Footer */
+.nkl-footer {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  min-height: clamp(28px, 10cqw, 128px);
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: clamp(8px, 3cqw, 38px);
+  padding: clamp(6px, 2cqw, 24px) clamp(16px, 5.5cqw, 70px);
+  background: rgba(4, 19, 43, 0.68);
+  border-top: 1px solid rgba(59, 126, 205, 0.38);
+  backdrop-filter: blur(8px);
+}
+
+.nkl-footer-line {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.56);
+}
+
+.nkl-footer-copy {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(2px, 0.6cqw, 7px);
+  text-align: center;
+}
+
+.nkl-footer-copy strong {
+  font-size: clamp(8px, 1.5cqw, 18px);
+  letter-spacing: 0.16em;
+  font-weight: 800;
+}
+
+.nkl-footer-copy span {
+  font-size: clamp(6px, 1cqw, 12px);
+  letter-spacing: 0.22em;
+  color: #8fb3df;
+  font-weight: 600;
+}
+
+/* Simple Template Modifier */
+.nkl-card--simple .nkl-header {
+  height: clamp(38px, 17cqw, 205px);
+}
+
+.nkl-content--simple {
+  display: flex;
+  justify-content: center;
+}
+
+.nkl-product-panel--simple {
+  width: min(810px, 86%);
+}
+
+.nkl-image-card--simple {
+  height: clamp(130px, 52cqw, 650px);
+}
+
+/* =========================================================
+   TEMPLATE 3: BADGE HERO (OEM Fitment & Power Rating Hero)
+   ========================================================= */
+.nkl-card--badge-hero {
+  background:
+    radial-gradient(circle at 50% 30%, rgba(229, 20, 36, 0.16), transparent 45%),
+    linear-gradient(155deg, #071731 0%, #0a2550 40%, #051226 100%);
+}
+
+.nkl-badge-hero-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding-bottom: clamp(6px, 1.5cqw, 16px);
+}
+
+.nkl-oem-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: clamp(4px, 0.8cqw, 8px);
+  padding: clamp(3px, 0.8cqw, 8px) clamp(8px, 1.6cqw, 18px);
+  border-radius: 9999px;
+  background: rgba(229, 20, 36, 0.18);
+  border: 1px solid rgba(229, 20, 36, 0.45);
+  color: #ff5266;
+  font-size: clamp(8px, 1.3cqw, 15px);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.nkl-crosshair-card {
+  position: relative;
+  background: #ffffff;
+  border-radius: clamp(10px, 2.4cqw, 28px);
+  overflow: hidden;
+  height: clamp(130px, 50cqw, 620px);
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.35);
+}
+
+.nkl-reticle {
+  position: absolute;
+  width: clamp(12px, 3cqw, 32px);
+  height: clamp(12px, 3cqw, 32px);
+  border: clamp(1.5px, 0.3cqw, 3px) solid #1555a3;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.nkl-reticle--tl { top: clamp(8px, 2cqw, 20px); left: clamp(8px, 2cqw, 20px); border-right: 0; border-bottom: 0; }
+.nkl-reticle--tr { top: clamp(8px, 2cqw, 20px); right: clamp(8px, 2cqw, 20px); border-left: 0; border-bottom: 0; }
+.nkl-reticle--bl { bottom: clamp(8px, 2cqw, 20px); left: clamp(8px, 2cqw, 20px); border-right: 0; border-top: 0; }
+.nkl-reticle--br { bottom: clamp(8px, 2cqw, 20px); right: clamp(8px, 2cqw, 20px); border-left: 0; border-top: 0; }
+
+.nkl-floating-spec-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: clamp(4px, 1cqw, 12px);
+  justify-content: center;
+  margin-top: clamp(6px, 1.5cqw, 18px);
+}
+
+.nkl-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: clamp(3px, 0.6cqw, 6px);
+  padding: clamp(2px, 0.6cqw, 6px) clamp(6px, 1.2cqw, 14px);
+  border-radius: clamp(6px, 1.2cqw, 12px);
+  background: rgba(16, 61, 121, 0.7);
+  border: 1px solid rgba(93, 160, 236, 0.4);
+  font-size: clamp(7px, 1.2cqw, 14px);
+  font-weight: 700;
+  color: #edf3fa;
+}
+
+/* =========================================================
+   TEMPLATE 4: DARK CARBON PRECISION FRAME
+   ========================================================= */
+.nkl-card--dark-carbon {
+  background:
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.02) 0, rgba(255, 255, 255, 0.02) 2px, transparent 2px, transparent 6px),
+    linear-gradient(145deg, #11141a 0%, #1a202c 45%, #0d1117 100%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.nkl-carbon-ruler-h {
+  display: flex;
+  justify-content: space-between;
+  padding: 0 clamp(8px, 2cqw, 24px);
+  font-family: monospace;
+  font-size: clamp(6px, 1cqw, 11px);
+  color: #718096;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  margin-bottom: clamp(4px, 1cqw, 12px);
+}
+
+.nkl-carbon-accent-bar {
+  width: clamp(4px, 0.8cqw, 8px);
+  background: linear-gradient(to bottom, #ff1634, #ff6b81);
+  border-radius: 4px;
+}
+
+/* =========================================================
+   TEMPLATE 5: LASER BLUEPRINT SCHEMATIC
+   ========================================================= */
+.nkl-card--blueprint {
+  background:
+    linear-gradient(rgba(21, 85, 163, 0.15) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(21, 85, 163, 0.15) 1px, transparent 1px),
+    linear-gradient(160deg, #03142e 0%, #06234d 50%, #031024 100%);
+  background-size: clamp(12px, 3cqw, 32px) clamp(12px, 3cqw, 32px), clamp(12px, 3cqw, 32px) clamp(12px, 3cqw, 32px), 100% 100%;
+  border: 2px solid rgba(93, 160, 236, 0.5);
+}
+
+.nkl-blueprint-corner {
+  position: absolute;
+  font-family: monospace;
+  font-size: clamp(6px, 1cqw, 11px);
+  color: #5da0ec;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+}
+
+.nkl-blueprint-cad-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: monospace;
+  font-size: clamp(7px, 1.2cqw, 13px);
+  color: #70b4ff;
+  border: 1px dashed rgba(93, 160, 236, 0.6);
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: rgba(7, 22, 47, 0.6);
+}
+
+/* Card Mode Compact Overrides (for grid cards & thumbnails) */
+.nkl-card--card-mode {
+  border-radius: 12px;
+  padding: 8px 8px 0;
+}
+
+.nkl-card--card-mode .nkl-header {
+  height: 28px;
+}
+
+.nkl-card--card-mode .nkl-logo {
+  height: 22px;
+}
+
+.nkl-card--card-mode .nkl-title-bar {
+  min-height: 24px;
+  padding: 0 8px;
+}
+
+.nkl-card--card-mode .nkl-title-bar h1 {
+  font-size: 11px;
+}
+
+.nkl-card--card-mode .nkl-image-card {
+  height: 120px;
+}
+
+.nkl-card--card-mode .nkl-footer {
+  min-height: 22px;
+  padding: 3px 8px;
+}
+
+.nkl-card--card-mode .nkl-footer-copy strong {
+  font-size: 8px;
+}
+
+.nkl-card--card-mode .nkl-footer-copy span {
+  font-size: 6px;
+}
+
+/* Card Mode Overrides for Two-Column Spec Layout */
+.nkl-card--card-mode.nkl-card--with-specs .nkl-content--two-col {
+  grid-template-columns: 1fr 106px;
+  gap: 6px;
+}
+
+.nkl-card--card-mode.nkl-card--with-specs .nkl-spec-panel {
+  height: 120px;
+  padding: 4px 6px;
+  border-radius: 8px;
+}
+
+.nkl-card--card-mode.nkl-card--with-specs .nkl-section-title {
+  margin: 0 0 3px 0;
+  gap: 3px;
+}
+
+.nkl-card--card-mode.nkl-card--with-specs .nkl-section-title h2 {
+  font-size: 7.5px;
+}
+
+.nkl-card--card-mode.nkl-card--with-specs .nkl-spec-list {
+  gap: 2.5px;
+}
+
+.nkl-card--card-mode.nkl-card--with-specs .nkl-spec-row {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 4px;
+  border-radius: 5px;
+}
+
+.nkl-card--card-mode.nkl-card--with-specs .nkl-spec-icon {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.nkl-card--card-mode.nkl-card--with-specs .nkl-spec-icon svg {
+  width: 9px;
+  height: 9px;
+}
+
+.nkl-card--card-mode.nkl-card--with-specs .nkl-spec-label,
+.nkl-card--card-mode.nkl-card--with-specs .nkl-spec-colon {
+  display: none;
+}
+
+.nkl-card--card-mode.nkl-card--with-specs .nkl-spec-value {
+  min-height: 14px;
+  font-size: 8px;
+  font-weight: 700;
+  padding: 1px 4px;
+  border-radius: 4px;
+  flex: 1;
+  justify-content: center;
+  text-align: center;
+}
+
+@container nklcard (max-width: 320px) {
+  .nkl-card--with-specs .nkl-spec-panel {
+    display: none !important;
+  }
+  .nkl-card--with-specs .nkl-content--two-col {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* Thumbnail Mode (e.g. 60px - 120px thumbnails) */
+.nkl-card--thumbnail-mode {
+  border-radius: 8px;
+  padding: 4px 4px 0 !important;
+}
+
+.nkl-card--thumbnail-mode .nkl-header {
+  height: 16px !important;
+}
+
+.nkl-card--thumbnail-mode .nkl-logo {
+  height: 13px !important;
+  max-width: 80% !important;
+}
+
+.nkl-card--thumbnail-mode .nkl-title-bar {
+  display: none !important;
+}
+
+.nkl-card--thumbnail-mode .nkl-spec-panel {
+  display: none !important;
+}
+
+.nkl-card--thumbnail-mode .nkl-content {
+  gap: 2px !important;
+  margin-bottom: 2px !important;
+}
+
+.nkl-card--thumbnail-mode .nkl-image-card {
+  height: auto !important;
+  flex: 1 !important;
+  min-height: 38px !important;
+  border-radius: 4px !important;
+  padding: 2px !important;
+}
+
+.nkl-card--thumbnail-mode .nkl-footer {
+  min-height: 12px !important;
+  padding: 1px 2px !important;
+}
+
+.nkl-card--thumbnail-mode .nkl-footer-line {
+  display: none !important;
+}
+
+.nkl-card--thumbnail-mode .nkl-footer-copy strong {
+  font-size: 6px !important;
+}
+
+.nkl-card--thumbnail-mode .nkl-footer-copy span {
+  display: none !important;
+}
+
+@container nklcard (max-width: 140px) {
+  .nkl-card {
+    padding: 3px 3px 0 !important;
+    border-radius: 6px !important;
+  }
+  .nkl-header {
+    height: 14px !important;
+  }
+  .nkl-logo {
+    height: 11px !important;
+  }
+  .nkl-title-bar {
+    display: none !important;
+  }
+  .nkl-spec-panel {
+    display: none !important;
+  }
+  .nkl-footer-copy span {
+    display: none !important;
+  }
+  .nkl-footer-copy strong {
+    font-size: 5px !important;
+  }
+}

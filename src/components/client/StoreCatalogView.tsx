@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { 
   Search, 
   Filter, 
@@ -25,6 +25,7 @@ import {
 import { ProductItem, SiteSettings, ProductCategoryDef } from '../../types';
 import { STORE_CATEGORIES } from '../../data/categoriesData';
 import { ShareCatalogModal } from './ShareCatalogModal';
+import { ProductTemplateRenderer } from './templates/ProductTemplateRenderer';
 
 interface StoreCatalogViewProps {
   products: ProductItem[];
@@ -283,6 +284,75 @@ export function StoreCatalogView({
       return 0;
     });
   }, [products, selectedCategorySlug, selectedBrand, selectedPower, inStockOnly, searchQuery, sortBy]);
+
+  // Lazy loading: batch initial 30 products for instantaneous client-side paint, then lazy load in background on scroll
+  const INITIAL_BATCH_SIZE = 30;
+  const BATCH_INCREMENT = 30;
+
+  const [visibleCount, setVisibleCount] = useState<number>(INITIAL_BATCH_SIZE);
+  const [isLoadingMore, setIsLoadingMore] = useState<boolean>(false);
+  const sentinelRef = useRef<HTMLDivElement>(null);
+
+  // Reset pagination batch on filter/search/sort change
+  useEffect(() => {
+    setVisibleCount(INITIAL_BATCH_SIZE);
+  }, [selectedCategorySlug, selectedBrand, selectedPower, inStockOnly, searchQuery, sortBy]);
+
+  const visibleProducts = useMemo(() => {
+    return filteredProducts.slice(0, visibleCount);
+  }, [filteredProducts, visibleCount]);
+
+  const loadMoreProducts = useCallback(() => {
+    if (visibleCount >= filteredProducts.length) return;
+    setIsLoadingMore(true);
+    // Yield to browser execution thread so UI interactions remain silky smooth
+    setTimeout(() => {
+      setVisibleCount(prev => Math.min(prev + BATCH_INCREMENT, filteredProducts.length));
+      setIsLoadingMore(false);
+    }, 40);
+  }, [visibleCount, filteredProducts.length]);
+
+  // IntersectionObserver to detect when user scrolls near the bottom
+  useEffect(() => {
+    if (visibleCount >= filteredProducts.length) return;
+
+    const currentSentinel = sentinelRef.current;
+    if (!currentSentinel) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0] && entries[0].isIntersecting) {
+          loadMoreProducts();
+        }
+      },
+      {
+        rootMargin: '400px 0px', // Prefetch next batch 400px before reaching bottom
+        threshold: 0.01
+      }
+    );
+
+    observer.observe(currentSentinel);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [loadMoreProducts, visibleCount, filteredProducts.length]);
+
+  // Fallback window scroll listener to ensure responsive lazy loading on all browsers/devices
+  useEffect(() => {
+    if (visibleCount >= filteredProducts.length) return;
+
+    const handleWindowScroll = () => {
+      if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 600) {
+        loadMoreProducts();
+      }
+    };
+
+    window.addEventListener('scroll', handleWindowScroll, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', handleWindowScroll);
+    };
+  }, [loadMoreProducts, visibleCount, filteredProducts.length]);
 
   const activeCategoryDef = availableCategories.find(c => c.slug === selectedCategorySlug);
 
@@ -1171,7 +1241,7 @@ export function StoreCatalogView({
             ) : viewMode === 'grid' ? (
               /* GRID VIEW */
               <div className="grid grid-cols-2 lg:grid-cols-3 gap-2.5 sm:gap-4 md:gap-5">
-                {filteredProducts.map((p) => {
+                {visibleProducts.map((p) => {
                   return (
                     <div
                       key={p.id}
@@ -1180,11 +1250,12 @@ export function StoreCatalogView({
                     >
                       {/* Top Image Section */}
                       <div className="relative aspect-square overflow-hidden bg-slate-50 border-b border-zinc-200">
-                        <img
-                          src={p.imageUrl}
-                          alt={p.title}
-                          className="w-full h-full object-cover group-hover:scale-108 transition-transform duration-500"
-                          referrerPolicy="no-referrer"
+                        <ProductTemplateRenderer
+                          product={p}
+                          settings={settings}
+                          mode="card"
+                          className="w-full h-full"
+                          imgClassName="w-full h-full object-cover group-hover:scale-108 transition-transform duration-500"
                         />
 
                         {/* Top Badges */}
@@ -1299,7 +1370,7 @@ export function StoreCatalogView({
             ) : (
               /* LIST VIEW */
               <div className="space-y-3">
-                {filteredProducts.map((p) => {
+                {visibleProducts.map((p) => {
                   return (
                     <div
                       key={p.id}
@@ -1309,11 +1380,12 @@ export function StoreCatalogView({
                       {/* Image & Title */}
                       <div className="flex items-center gap-4 min-w-0 flex-1">
                         <div className="w-20 h-20 rounded-xl overflow-hidden bg-zinc-950 shrink-0 border border-zinc-800/40">
-                          <img
-                            src={p.imageUrl}
-                            alt={p.title}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                            referrerPolicy="no-referrer"
+                          <ProductTemplateRenderer
+                            product={p}
+                            settings={settings}
+                            mode="thumbnail"
+                            className="w-full h-full"
+                            imgClassName="w-full h-full object-cover group-hover:scale-105 transition-transform"
                           />
                         </div>
 
@@ -1385,6 +1457,50 @@ export function StoreCatalogView({
                 })}
               </div>
             )}
+
+            {/* Lazy Loading / Infinite Scroll Sentinel & Loading Indicator */}
+            <div ref={sentinelRef} className="pt-6 pb-2">
+              {visibleCount < filteredProducts.length ? (
+                <div className="p-4 sm:p-5 rounded-2xl border border-zinc-200 bg-white shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left transition-all">
+                  <div className="flex items-center gap-3">
+                    <div className="w-3 h-3 rounded-full bg-amber-500 animate-pulse shrink-0 ring-4 ring-amber-500/20" />
+                    <div>
+                      <p className="text-xs font-bold text-zinc-800">
+                        Displaying <span className="font-mono font-black text-amber-600">{visibleProducts.length}</span> of <span className="font-mono font-black">{filteredProducts.length}</span> laser spares
+                      </p>
+                      <p className="text-[11px] text-zinc-500">
+                        {isLoadingMore ? 'Loading next products smoothly in background...' : 'Scroll down to load next batch automatically'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      type="button"
+                      onClick={loadMoreProducts}
+                      disabled={isLoadingMore}
+                      className="px-3.5 py-2 rounded-xl border border-zinc-200 bg-zinc-50 hover:bg-zinc-100 text-zinc-700 text-xs font-bold transition-colors cursor-pointer disabled:opacity-50"
+                    >
+                      {isLoadingMore ? 'Loading...' : 'Load Next 30'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setVisibleCount(filteredProducts.length)}
+                      className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-zinc-950 text-xs font-black transition-colors cursor-pointer shadow-xs"
+                    >
+                      Show All ({filteredProducts.length})
+                    </button>
+                  </div>
+                </div>
+              ) : filteredProducts.length > 30 ? (
+                <div className="py-4 text-center">
+                  <span className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-bold bg-zinc-100 text-zinc-600 border border-zinc-200/80">
+                    <Check className="w-3.5 h-3.5 text-emerald-600" />
+                    All {filteredProducts.length} laser spare parts loaded
+                  </span>
+                </div>
+              ) : null}
+            </div>
 
           </div>
 

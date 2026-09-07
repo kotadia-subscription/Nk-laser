@@ -56,7 +56,24 @@ export const INITIAL_PRODUCTS: ProductItem[] = [
     "salePrice": 1899,
     "estimatedPrice": 1899,
     "originalUrl": "https://www.NKL Laser.in/products/ceramic-lockig-ring-raytool-bm06k",
-    "moq": 1
+    "galleryImages": [
+      "https://images.unsplash.com/photo-1504917599217-d4dc5ebe6122?auto=format&fit=crop&w=600&q=80",
+      "https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=600&q=80"
+    ],
+    "moq": 1,
+    "templateConfig": {
+      "templateId": "specs",
+      "logoPreset": "official-badge",
+      "sizeText": "BM06K / Ø 32 mm",
+      "websiteText": "WWW.NKLASER.IN",
+      "footerTagline": "IDEAS SHAPED WITH LASER",
+      "specs": [
+        { "label": "Diameter", "value": "32 mm", "icon": "diameter" },
+        { "label": "Height", "value": "15 mm", "icon": "height" },
+        { "label": "Power", "value": "1-30 kW", "icon": "power" },
+        { "label": "Fitment", "value": "BM06K", "icon": "qty" }
+      ]
+    }
   },
   {
     "id": "nkl-ceramic-lockig-ring-raytool-bm109-102",
@@ -113,7 +130,14 @@ export const INITIAL_PRODUCTS: ProductItem[] = [
     "salePrice": 1799,
     "estimatedPrice": 1799,
     "originalUrl": "https://www.NKL Laser.in/products/ceramic-lockig-ring-raytool-bm109",
-    "moq": 1
+    "moq": 1,
+    "templateConfig": {
+      "templateId": "badge-hero",
+      "logoPreset": "official-badge",
+      "sizeText": "BM109 Series",
+      "websiteText": "WWW.NKLASER.IN",
+      "footerTagline": "HIGH PERFORMANCE FIBER OPTICS"
+    }
   },
   {
     "id": "nkl-ceramic-lockig-ring-raytool-bm110-103",
@@ -170,7 +194,14 @@ export const INITIAL_PRODUCTS: ProductItem[] = [
     "salePrice": 1799,
     "estimatedPrice": 1799,
     "originalUrl": "https://www.NKL Laser.in/products/ceramic-lockig-ring-raytool-bm110",
-    "moq": 1
+    "moq": 1,
+    "templateConfig": {
+      "templateId": "dark-carbon",
+      "logoPreset": "official-badge",
+      "sizeText": "BM110 High-Precision",
+      "websiteText": "WWW.NKLASER.IN",
+      "footerTagline": "HIGH-POWER FIBER LASER OPTICS"
+    }
   },
   {
     "id": "nkl-ceramic-lockig-ring-raytool-bm111-104",
