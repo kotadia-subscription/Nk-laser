@@ -1,0 +1,28 @@
+# Robots.txt for NK Laser Spares & Optics
+# https://nklaser.com
+
+User-agent: *
+Allow: /
+Allow: /store
+Allow: /category/
+Allow: /product/
+Allow: /services
+Allow: /reviews
+Allow: /contact
+Allow: /llms.txt
+
+# Disallow admin back-office and private API endpoints
+Disallow: /admin
+Disallow: /api/admin
+Disallow: /api/auth
+Disallow: /api/config
+Disallow: /nk-vault-*
+Disallow: /*?vault=*
+Disallow: /*?admin=*
+Disallow: /backup-restore
+
+# Crawl-delay for polite crawling
+Crawl-delay: 1
+
+# XML Sitemap Location
+Sitemap: https://nklaser.com/sitemap.xml

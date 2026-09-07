@@ -1,0 +1,6 @@
+{
+  "name": "NK Laser Cutting - Laser Cutting & Fabrication Services",
+  "description": "Direct imported fiber laser spare parts, optics, consumables, and CNC controllers store with category filtering, RFQ cart, configuration backup persistence, and instant WhatsApp quotes.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

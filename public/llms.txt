@@ -1,0 +1,84 @@
+# NK Laser Spares & Optics (NK Laser)
+> Direct Importer of Industrial Fiber Laser Consumables, Laser Optics, CNC Controllers & Precision Sheet Metal Fabrication Services.
+
+Website: https://nklaser.com
+Support & RFQs: nklaser33@gmail.com
+WhatsApp & Phone: +91 99020 35374
+Headquarters: Plot No. 42, GIDC Industrial Area, Sector 3, Gujarat, India (PIN: 382445)
+Regional Dispatch Centers: Ahmedabad (Gujarat), Peenya Bengaluru (Karnataka), Bhosari Pune (Maharashtra)
+
+---
+
+## 1. Company Overview
+NK Laser is a premier Indian industrial supplier specializing in direct import and distribution of precision fiber laser cutting consumables, high-transmittance laser optics, and CNC control systems for high-power fiber laser cutting machines (1kW to 30kW). Additionally, NK Laser operates high-precision sheet metal and pipe CNC fiber laser cutting and fabrication job-work facilities.
+
+---
+
+## 2. Core Spare Parts & Optics Portfolio
+
+### Optical Protective Windows & Lenses
+- **Fused Silica / Quartz Protective Windows**: High damage threshold (anti-reflective AR coated at 1064nm, >99.95% transmittance, dual-side dielectric coating).
+- **Common Sizes**: 
+  - D27.9 x 4.1mm (RayTools BM110, BM111, BM06K)
+  - D30 x 5mm (RayTools BM114, OSPRI LC40/LC60)
+  - D37 x 7mm (High power 12kW-30kW OSPRI, WSX, Precitec ProCutter)
+  - D24.9 x 1.5mm / D20 x 2mm / D38 x 8mm
+- **Focusing & Collimating Lens Assemblies**: Doublet achromatic lenses with low wave-front distortion, optimized for RayTools, WSX, and Precitec heads.
+
+### Laser Cutting Nozzles
+- **Material**: High-conductivity Tellurium Copper (TeCu C14500) with mirror-smooth interior surface finish for laminar gas flow.
+- **Configurations**: Single layer (Nitrogen/Air assist for Stainless Steel & Aluminum), Double layer (Oxygen assist for Mild Steel), Chromed/Electroplated high-durability coatings.
+- **Aperture Diameters**: 1.0mm, 1.2mm, 1.4mm, 1.5mm, 1.8mm, 2.0mm, 2.5mm, 3.0mm, 3.5mm, 4.0mm.
+- **Thread Standards**: M11, M14, M16, D28mm, D32mm (RayTools, Precitec, WSX, Bystronic, Trumpf compatible).
+
+### Ceramic Sensor Bodies & Rings
+- **Material**: High-purity technical alumina ceramic with soldered gold-plated alloy contacts.
+- **Function**: Capacitive height sensing and collision detection between laser head and sheet metal.
+- **Models**: RayTools D28/D32 ceramic rings, Precitec ceramic bodies, OSPRI capacitive rings.
+
+### Cutting Heads & CNC Controller Hardware
+- **Cutting Heads**: RayTools BM110, BM111, BM114S, OSPRI LC40, LC60, LC80, WSX NC30, NC60 autofocus heads.
+- **CNC Controllers**: BOCHU CypCut FSCUT2000E, FSCUT4000E, FSCUT8000 bus system controllers.
+- **Wireless Remotes**: CypCut WKC wireless industrial operator pendants.
+- **Pneumatics & Sensors**: High-pressure proportional valves (SMC/Aventics), centering target needles, water and gas fittings.
+
+---
+
+## 3. Compatible Machine & Laser Source Brands
+NK Laser spares guarantee 100% fitment with:
+- **Laser Cutting Heads**: RayTools, OSPRI, WSX, Precitec, Au3Tech, Bodor Genius, WSX, DNE.
+- **CNC Systems**: BOCHU FSCUT (CypCut / CypOne / HypCut), Weihong, CypTube.
+- **Fiber Laser Sources**: IPG Photonics, Raycus, Maxphotonics, nLIGHT, JPT, GW Laser.
+- **Machine OEMs**: Bodor, HSG, DNE Global, Hans Laser, HGTECH, Lead Laser, Penta Laser, Sahajanand Laser (SLTL), Mehta CAD CAM, Macpower.
+
+---
+
+## 4. Engineering & Laser Cutting Services
+
+- **CNC Sheet Metal Fiber Laser Cutting**:
+  - Mild Steel / Carbon Steel: Up to 25mm thickness (Oxygen & High-Pressure Nitrogen)
+  - Stainless Steel (SS304/SS316): Up to 20mm thickness (Burr-free nitrogen cutting)
+  - Aluminum (5052/6061): Up to 16mm thickness
+  - Brass & Pure Copper: Up to 10mm thickness
+- **CNC Tube & Rotary Pipe Laser Cutting**: Round pipes (up to 220mm OD), square tubes (up to 150x150mm), rectangular and C-channels.
+- **CNC Press Brake Bending**: Multi-axis sheet metal forming up to 3000mm bend length.
+- **Precision Laser Welding & Assembly**: Fiber handheld laser welding for spotless, high-strength joints.
+- **Architectural & Decorative Metal Jali**: Custom CNC cut façade panels, railings, and screens.
+
+---
+
+## 5. Warehouse & Dispatch Logistics
+- **Same-Day Express Dispatch**: Orders placed by 4:00 PM are packed and handed over to express air/road couriers on the same day.
+- **Dispatch Hubs**:
+  1. Ahmedabad Central Stockyard & Import HQ (Gujarat)
+  2. Bengaluru Peenya Industrial Hub (South India)
+  3. Pune Bhosari Industrial Hub (West India)
+- **Transit Time**: 24 to 48 hours for major industrial manufacturing clusters across India.
+
+---
+
+## 6. How to Inquire & Order
+- **Web Store Catalog**: https://nklaser.com/store
+- **Instant Quotation**: Add parts to the digital RFQ cart and download a formal company letterhead PDF or send directly to WhatsApp.
+- **WhatsApp Direct Line**: +91 99020 35374 (Send part photo or machine model for instant verification)
+- **Email Inquiries**: nklaser33@gmail.com

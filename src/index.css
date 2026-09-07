@@ -1,0 +1,219 @@
+@import "tailwindcss";
+
+/* Force light mode: dark variant will never match any element */
+@variant dark (&:where(.never-match-dark));
+
+@theme {
+  --color-primary: var(--primary, #162657);
+  --color-primary-hover: var(--primary-hover, #101c40);
+  --color-primary-active: var(--primary-active, #0b1533);
+  --color-primary-dark: var(--primary-dark, #0b1533);
+  --color-primary-contrast: var(--primary-contrast, #ffffff);
+
+  --color-accent: var(--accent, #E51024);
+  --color-accent-hover: var(--accent-hover, #c70e1f);
+  --color-accent-active: var(--accent-active, #a00b19);
+  --color-accent-dark: var(--accent-dark, #B90D1D);
+  --color-accent-contrast: var(--accent-contrast, #ffffff);
+
+  --color-surface: var(--surface, #ffffff);
+  --color-surface-secondary: var(--surface-secondary, #EAF0FF);
+  --color-text-primary: var(--text-primary, #111827);
+  --color-text-secondary: var(--text-secondary, #64748B);
+  --color-border: var(--border, #D9E1EF);
+}
+
+:root {
+  /* NKL Brand Default Design Tokens - Clean White Background */
+  --primary: #162657;
+  --primary-hover: #101c40;
+  --primary-active: #0b1533;
+  --primary-dark: #0b1533;
+  --primary-rgb: 22, 38, 87;
+  --primary-contrast: #ffffff;
+
+  --accent: #E51024;
+  --accent-hover: #c70e1f;
+  --accent-active: #a00b19;
+  --accent-dark: #B90D1D;
+  --accent-rgb: 229, 16, 36;
+  --accent-contrast: #ffffff;
+
+  --background: #FFFFFF;
+  --surface: #FFFFFF;
+  --surface-secondary: #F8FAFC;
+  --text-primary: #111827;
+  --text-secondary: #64748B;
+  --border: #E2E8F0;
+  --muted: #64748B;
+
+  /* Backward Compatibility Aliases */
+  --primary-color: var(--primary);
+  --accent-color: var(--accent);
+  --primary-light: #EAF0FF;
+  --primary-light-border: #CBD5E1;
+  --accent-light: #FEE2E2;
+  --accent-light-border: #FECACA;
+}
+
+body {
+  background-color: var(--background, #FFFFFF);
+  color: var(--text-primary, #111827);
+}
+
+@layer components {
+  /* ========================================================================= */
+  /* CENTRALIZED DESIGN TOKEN & BUTTON UTILITIES                               */
+  /* ========================================================================= */
+
+  /* Primary Action Button (Controlled via --primary design token) */
+  .btn-primary,
+  button.btn-primary,
+  a.btn-primary {
+    @apply inline-flex items-center justify-center font-bold transition-all duration-200 cursor-pointer rounded-xl active:scale-[0.98] select-none;
+    background-color: var(--primary, #162657) !important;
+    color: var(--primary-contrast, #ffffff) !important;
+    box-shadow: 0 4px 14px 0 rgba(var(--primary-rgb, 22, 38, 87), 0.35);
+  }
+  
+  .btn-primary:hover,
+  button.btn-primary:hover,
+  a.btn-primary:hover {
+    background-color: var(--primary-hover, #101c40) !important;
+    color: var(--primary-contrast, #ffffff) !important;
+    box-shadow: 0 6px 20px 0 rgba(var(--primary-rgb, 22, 38, 87), 0.45);
+  }
+
+  /* Accent Button (Controlled via --accent design token e.g. Brand Red) */
+  .btn-accent,
+  button.btn-accent,
+  a.btn-accent {
+    @apply inline-flex items-center justify-center font-bold transition-all duration-200 cursor-pointer rounded-xl active:scale-[0.98] select-none;
+    background-color: var(--accent, #E51024) !important;
+    color: var(--accent-contrast, #ffffff) !important;
+    box-shadow: 0 4px 14px 0 rgba(var(--accent-rgb, 229, 16, 36), 0.35);
+  }
+
+  .btn-accent:hover,
+  button.btn-accent:hover,
+  a.btn-accent:hover {
+    background-color: var(--accent-hover, #c70e1f) !important;
+    color: var(--accent-contrast, #ffffff) !important;
+    box-shadow: 0 6px 20px 0 rgba(var(--accent-rgb, 229, 16, 36), 0.45);
+  }
+
+  /* Universal Contrast Enforcement */
+  .btn-primary svg,
+  .btn-primary span,
+  .btn-primary p {
+    color: var(--primary-contrast, #ffffff) !important;
+  }
+
+  .btn-accent svg,
+  .btn-accent span,
+  .btn-accent p {
+    color: var(--accent-contrast, #ffffff) !important;
+  }
+
+  /* Secondary Neutral / Outline Button */
+  .btn-secondary {
+    @apply inline-flex items-center justify-center font-bold transition-all duration-200 cursor-pointer rounded-xl border select-none active:scale-[0.98];
+    background-color: var(--surface, #ffffff);
+    color: var(--text-primary, #111827);
+    border-color: var(--border, #D9E1EF);
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
+  }
+  .btn-secondary:hover {
+    background-color: var(--surface-secondary, #EAF0FF);
+    border-color: var(--primary, #162657);
+    color: var(--text-primary, #111827);
+  }
+
+  /* Dynamic Token Classes */
+  .theme-bg-primary {
+    background-color: var(--primary, #162657) !important;
+    color: var(--primary-contrast, #ffffff) !important;
+  }
+  .theme-bg-accent {
+    background-color: var(--accent, #E51024) !important;
+    color: var(--accent-contrast, #ffffff) !important;
+  }
+  .theme-text-primary {
+    color: var(--primary, #162657) !important;
+  }
+  .theme-text-accent {
+    color: var(--accent, #E51024) !important;
+  }
+  .theme-border-primary {
+    border-color: var(--primary, #162657) !important;
+  }
+  .theme-border-accent {
+    border-color: var(--accent, #E51024) !important;
+  }
+  .theme-surface {
+    background-color: var(--surface, #ffffff);
+    border-color: var(--border, #D9E1EF);
+  }
+  .theme-surface-secondary {
+    background-color: var(--surface-secondary, #EAF0FF);
+  }
+
+  .theme-light-badge {
+    background-color: var(--primary-light, #EAF0FF) !important;
+    color: var(--primary, #162657) !important;
+    border-color: var(--primary-light-border, #CBD5E1) !important;
+  }
+
+  .theme-accent-badge {
+    background-color: var(--accent-light, #FEE2E2) !important;
+    color: var(--accent, #E51024) !important;
+    border-color: var(--accent-light-border, #FECACA) !important;
+  }
+
+  /* Dynamic Filter Lighting & Active States */
+  .filter-option-active {
+    background-color: rgba(var(--primary-rgb, 22, 38, 87), 0.12) !important;
+    color: var(--primary, #162657) !important;
+    border-color: rgba(var(--primary-rgb, 22, 38, 87), 0.4) !important;
+    font-weight: 700;
+  }
+
+  .filter-pill-active {
+    background-color: var(--primary, #162657) !important;
+    color: var(--primary-contrast, #ffffff) !important;
+    border-color: var(--primary, #162657) !important;
+    font-weight: 700;
+    box-shadow: 0 2px 8px 0 rgba(var(--primary-rgb, 22, 38, 87), 0.25);
+  }
+
+  .filter-pill-active svg {
+    color: var(--primary-contrast, #ffffff) !important;
+  }
+
+  .filter-badge-active {
+    background-color: rgba(var(--primary-rgb, 22, 38, 87), 0.18) !important;
+    color: var(--primary, #162657) !important;
+    border: 1px solid rgba(var(--primary-rgb, 22, 38, 87), 0.35) !important;
+  }
+
+  .filter-icon-accent {
+    color: var(--accent, #E51024) !important;
+  }
+
+  .filter-checkbox:checked {
+    background-color: var(--primary, #162657);
+    border-color: var(--primary, #162657);
+  }
+
+  /* WhatsApp / Success Action Button */
+  .btn-whatsapp, .btn-success {
+    @apply inline-flex items-center justify-center font-bold transition-all duration-200 cursor-pointer rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-md hover:shadow-xl hover:shadow-emerald-600/30 active:scale-[0.98] select-none;
+  }
+
+  /* Universal interactive button hover shadow boost */
+  button:not(:disabled), a[role="button"]:not(:disabled) {
+    transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 150ms;
+  }
+}
