@@ -16,10 +16,14 @@ import {
   Filter,
   ChevronLeft,
   ChevronRight,
-  MessageSquare
+  MessageSquare,
+  Download,
+  Upload
 } from 'lucide-react';
 import { ReviewItem } from '../../../types';
 import { ReviewEditModal } from '../modals/ReviewEditModal';
+import { downloadReviewsFile } from '../../../lib/storage';
+import { ImportDataModal } from '../modals/ImportDataModal';
 
 interface AdminReviewsViewProps {
   theme: 'light' | 'dark';
@@ -27,6 +31,7 @@ interface AdminReviewsViewProps {
   onAddReview: (newReview: Partial<ReviewItem>) => void;
   onUpdateReview: (updatedReview: Partial<ReviewItem>) => void;
   onDeleteReview: (id: string) => void;
+  onReviewsUpdated?: (reviews: ReviewItem[]) => void;
 }
 
 const ITEMS_PER_PAGE = 15;
@@ -36,8 +41,10 @@ export const AdminReviewsView: React.FC<AdminReviewsViewProps> = ({
   reviews,
   onAddReview,
   onUpdateReview,
-  onDeleteReview
+  onDeleteReview,
+  onReviewsUpdated
 }) => {
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [ratingFilter, setRatingFilter] = useState<'all' | number>('all');
   const [verifiedFilter, setVerifiedFilter] = useState<'all' | 'verified' | 'unverified'>('all');
@@ -146,13 +153,33 @@ export const AdminReviewsView: React.FC<AdminReviewsViewProps> = ({
             </p>
           </div>
 
-          <button
-            onClick={handleOpenAdd}
-            className="btn-primary px-5 py-2.5 rounded-xl text-xs font-black flex items-center gap-2 shrink-0 shadow-md cursor-pointer hover:scale-102 transition-transform"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Add New Review</span>
-          </button>
+          <div className="flex items-center gap-2 flex-wrap shrink-0">
+            <button
+              type="button"
+              onClick={() => downloadReviewsFile()}
+              className="px-3 py-2.5 rounded-xl text-xs font-bold border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
+              title="Export Reviews JSON"
+            >
+              <Download className="w-3.5 h-3.5 text-blue-700" />
+              <span>Export</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsImportModalOpen(true)}
+              className="px-3 py-2.5 rounded-xl text-xs font-bold border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
+              title="Import Reviews JSON"
+            >
+              <Upload className="w-3.5 h-3.5 text-emerald-700" />
+              <span>Import</span>
+            </button>
+            <button
+              onClick={handleOpenAdd}
+              className="btn-primary px-5 py-2.5 rounded-xl text-xs font-black flex items-center gap-2 shrink-0 shadow-md cursor-pointer hover:scale-102 transition-transform"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Add New Review</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -502,6 +529,20 @@ export const AdminReviewsView: React.FC<AdminReviewsViewProps> = ({
             </div>
           </div>
         </div>
+      )}
+
+      {/* Import Reviews Modal */}
+      {isImportModalOpen && (
+        <ImportDataModal
+          theme={theme}
+          entity="reviews"
+          onClose={() => setIsImportModalOpen(false)}
+          onSuccess={(res) => {
+            if (res.data && onReviewsUpdated) {
+              onReviewsUpdated(res.data);
+            }
+          }}
+        />
       )}
 
     </div>

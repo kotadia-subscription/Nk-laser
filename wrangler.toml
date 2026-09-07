@@ -1,0 +1,6 @@
+name = "nk-laser"
+compatibility_date = "2024-09-01"
+pages_build_output_dir = "dist"
+
+# Node.js compatibility for Pages Functions
+compatibility_flags = ["nodejs_compat"]

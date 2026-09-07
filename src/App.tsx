@@ -617,6 +617,9 @@ export default function App() {
           onTabChange={handleAdminTabChange}
           onClose={handleCloseAdmin}
           onSettingsUpdated={handleSettingsUpdated}
+          onProductsUpdated={(newProds) => {
+            setProducts(newProds);
+          }}
           onCategoriesUpdated={(newCats) => {
             setCategories(newCats);
           }}

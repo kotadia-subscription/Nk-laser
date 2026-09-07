@@ -534,3 +534,56 @@ export async function deleteAdminReview(id: string): Promise<{ success: boolean;
   }
 }
 
+/**
+ * Modular entity export from server (Products, Categories, Reviews, Settings, All)
+ */
+export async function exportAdminEntity(
+  entity: 'products' | 'categories' | 'reviews' | 'settings' | 'all',
+  format: 'json' | 'csv' = 'json'
+): Promise<{ success: boolean; data?: any; rawText?: string; error?: string }> {
+  try {
+    const url = `/api/admin/export/${entity}?format=${format}`;
+    const res = await adminFetch(url);
+    if (!res.ok) {
+      return { success: false, error: `Failed to export ${entity} (Status: ${res.status})` };
+    }
+    if (format === 'csv') {
+      const rawText = await res.text();
+      return { success: true, rawText };
+    }
+    const data = await res.json();
+    return { success: true, data };
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Network error during export' };
+  }
+}
+
+/**
+ * Modular entity import to server (Products, Categories, Reviews, Settings)
+ */
+export async function importAdminEntity(
+  entity: 'products' | 'categories' | 'reviews' | 'settings',
+  payload: any,
+  mode: 'merge' | 'replace' = 'merge'
+): Promise<{ success: boolean; message?: string; count?: number; items?: any; error?: string }> {
+  try {
+    const res = await adminFetch(`/api/admin/import/${entity}`, {
+      method: 'POST',
+      body: JSON.stringify({ data: payload, mode })
+    });
+    const result = await res.json();
+    if (!res.ok || !result.success) {
+      return { success: false, error: result.error || `Failed to import ${entity}` };
+    }
+    return {
+      success: true,
+      message: result.message,
+      count: result.count,
+      items: result.items
+    };
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Network error during import' };
+  }
+}
+
+

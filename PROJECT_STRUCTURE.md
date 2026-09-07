@@ -33,6 +33,7 @@ The application pairs a high-conversion client-facing product catalog with a pas
 ├── app-config.json                       # Persistent database store on disk (products, categories, settings, PII)
 ├── AGENTS.md                             # AI Agent guidelines, architecture & rules (Auto-injected)
 ├── CLOUDFLARE.md                         # Complete Cloudflare Pages & D1 deployment instructions
+├── DATA_MANAGEMENT.md                    # Data persistence, modular import/export & server sync guide
 ├── PROJECT_STRUCTURE.md                  # Detailed architectural blueprint & component tree
 ├── README.md                             # Comprehensive project overview & documentation
 └── src/

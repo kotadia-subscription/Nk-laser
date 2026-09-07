@@ -23,9 +23,13 @@ import {
   Radio,
   Grid,
   Wrench,
-  Copy
+  Copy,
+  Download,
+  Upload
 } from 'lucide-react';
 import { ProductCategoryDef, ProductItem, SiteSettings } from '../../../types';
+import { downloadCategoriesFile } from '../../../lib/storage';
+import { ImportDataModal } from '../modals/ImportDataModal';
 
 interface AdminCategoriesViewProps {
   theme: 'light' | 'dark';
@@ -48,6 +52,7 @@ interface AdminCategoriesViewProps {
   onRemoveBrandFromCategory: (brand: string) => void;
   onToggleCategoryFeatured?: (catId: string, currentVal: boolean | undefined) => void;
   onToggleCategoryHome?: (catId: string, currentVal: boolean | undefined) => void;
+  onCategoriesUpdated?: (categories: ProductCategoryDef[]) => void;
 }
 
 export const AdminCategoriesView: React.FC<AdminCategoriesViewProps> = ({
@@ -70,13 +75,15 @@ export const AdminCategoriesView: React.FC<AdminCategoriesViewProps> = ({
   onAddBrandToCategory,
   onRemoveBrandFromCategory,
   onToggleCategoryFeatured,
-  onToggleCategoryHome
+  onToggleCategoryHome,
+  onCategoriesUpdated
 }) => {
   const [categorySearchQuery, setCategorySearchQuery] = useState('');
   const [productSearchInCategory, setProductSearchInCategory] = useState('');
   const [productStockFilter, setProductStockFilter] = useState<'all' | 'in-stock' | 'out-of-stock'>('all');
   const [newSubcategoryInput, setNewSubcategoryInput] = useState('');
   const [newOemBrandInput, setNewOemBrandInput] = useState('');
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
   const renderCategoryIcon = (iconName: string) => {
     switch (iconName) {
@@ -173,13 +180,31 @@ export const AdminCategoriesView: React.FC<AdminCategoriesViewProps> = ({
                 <Layers className="w-4 h-4 text-amber-500" />
                 <h3 className="font-black text-sm">Categories ({categories.length})</h3>
               </div>
-              <button
-                onClick={onOpenCreateCategory}
-                className="btn-primary px-2.5 py-1 rounded-lg text-xs gap-1"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>Add</span>
-              </button>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => downloadCategoriesFile()}
+                  className="p-1.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 cursor-pointer transition-colors"
+                  title="Export Categories JSON"
+                >
+                  <Download className="w-3.5 h-3.5 text-blue-700" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsImportModalOpen(true)}
+                  className="p-1.5 rounded-lg border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 cursor-pointer transition-colors"
+                  title="Import Categories JSON"
+                >
+                  <Upload className="w-3.5 h-3.5 text-emerald-700" />
+                </button>
+                <button
+                  onClick={onOpenCreateCategory}
+                  className="btn-primary px-2.5 py-1 rounded-lg text-xs gap-1"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Add</span>
+                </button>
+              </div>
             </div>
 
             {/* Search Box */}
@@ -645,6 +670,20 @@ export const AdminCategoriesView: React.FC<AdminCategoriesViewProps> = ({
         </div>
 
       </div>
+
+      {/* Import Categories Modal */}
+      {isImportModalOpen && (
+        <ImportDataModal
+          theme={theme}
+          entity="categories"
+          onClose={() => setIsImportModalOpen(false)}
+          onSuccess={(res) => {
+            if (res.data && onCategoriesUpdated) {
+              onCategoriesUpdated(res.data);
+            }
+          }}
+        />
+      )}
 
     </div>
   );
