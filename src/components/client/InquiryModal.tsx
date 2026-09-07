@@ -4,6 +4,7 @@ import { ProductItem, SiteSettings } from '../../types';
 import { saveInquiry } from '../../lib/storage';
 import { createProductInquiryMessage, buildWhatsAppLink } from '../../utils/whatsapp';
 import { WhatsAppIcon } from '../common/WhatsAppIcon';
+import { ProductTemplateRenderer } from './templates/ProductTemplateRenderer';
 
 interface InquiryModalProps {
   item: ProductItem;
@@ -177,27 +178,13 @@ export const InquiryModal: React.FC<InquiryModalProps> = ({ item, settings, onCl
                 <div className="space-y-3">
                   {/* Thumbnail & Title on Mobile (Side-by-Side), Stacked on Desktop */}
                   <div className="flex flex-row md:flex-col items-center md:items-stretch gap-3">
-                    {/* Compact Image */}
-                    <div className="relative w-20 h-20 sm:w-24 sm:h-24 md:w-full md:h-28 shrink-0 rounded-xl overflow-hidden bg-white border border-slate-200 flex items-center justify-center p-1.5">
-                      <img 
-                        src={item.image || item.imageUrl} 
-                        alt={item.title} 
-                        className="w-full h-full object-contain"
-                        referrerPolicy="no-referrer"
+                    {/* Compact Branded Template Thumbnail */}
+                    <div className="relative w-20 h-20 sm:w-24 sm:h-24 md:w-full md:h-28 shrink-0 rounded-xl overflow-hidden bg-slate-900 border border-slate-200 flex items-center justify-center">
+                      <ProductTemplateRenderer
+                        product={item}
+                        mode="thumbnail"
+                        className="w-full h-full"
                       />
-                      {item.brand && (
-                        <span 
-                          style={{ backgroundColor: 'var(--primary, #162657)', color: '#ffffff' }}
-                          className="absolute top-1 left-1 px-1.5 py-0.5 rounded text-[9px] font-black shadow-xs truncate max-w-[85%]"
-                        >
-                          {item.brand}
-                        </span>
-                      )}
-                      {item.sku && (
-                        <span className="absolute bottom-1 left-1 px-1.5 py-0.5 rounded text-[8px] font-mono font-bold bg-zinc-900 text-amber-300 border border-zinc-700 truncate max-w-[85%]">
-                          {item.sku}
-                        </span>
-                      )}
                     </div>
 
                     {/* Title & Category & Price (On mobile next to image, on desktop below image) */}

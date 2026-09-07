@@ -40,9 +40,16 @@ import {
   UserCheck,
   Package,
   FileSpreadsheet,
-  Layers
+  Layers,
+  Palette,
+  Sparkles,
+  RotateCcw
 } from 'lucide-react';
 import { SiteSettings, FullAppConfigurationBackup, ConfigSnapshot, BusinessAddress } from '../../../types';
+import { 
+  TEMPLATE_LOGO_PRESETS, 
+  getEffectivePresetLogoInfo 
+} from '../../client/templates/templatePresets';
 import { 
   DEFAULT_PRIMARY_COLOR, 
   DEFAULT_ACCENT_COLOR,
@@ -1195,6 +1202,326 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({
               />
             </div>
           </div>
+
+        </div>
+      </div>
+
+      {/* Branded Product Presentation Template - Logo Presets Card */}
+      <div className="p-5 sm:p-6 rounded-3xl border space-y-4 bg-white border-slate-200 shadow-xs">
+        <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-100">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-amber-500/10 text-amber-600">
+              <Sparkles className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="font-black text-sm text-slate-900">
+                Branded Product Presentation Template - Preset Logos
+              </h3>
+              <p className="text-[11px] text-slate-500">
+                Set and manage the 4 logo options available across all Branded Presentation Templates. Upload your custom logo files or paste image URLs.
+              </p>
+            </div>
+          </div>
+          <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-amber-50 text-amber-800 border border-amber-200">
+            4 Global Logo Slots
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+          
+          {/* Slot 1: 3D Metallic Emblem */}
+          {(() => {
+            const isCustom = Boolean(formData.templateLogoPresets?.['official-badge']);
+            const effective = getEffectivePresetLogoInfo('official-badge', formData.templateLogoPresets);
+            return (
+              <div className="p-4 rounded-2xl border border-slate-200 bg-slate-50/70 space-y-3">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="font-bold text-xs text-slate-900 flex items-center gap-1.5">
+                      <span>Logo 1: 3D Metallic Emblem (Default)</span>
+                      {isCustom && (
+                        <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
+                          Custom File Set
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[10px] text-slate-500 truncate">
+                      Primary metallic chrome & ruby badge used as default product logo
+                    </p>
+                  </div>
+                  
+                  {isCustom && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const updated = { ...(formData.templateLogoPresets || {}) };
+                        delete updated['official-badge'];
+                        setFormData({ ...formData, templateLogoPresets: updated });
+                      }}
+                      className="text-[10px] font-bold text-amber-700 hover:text-amber-800 flex items-center gap-1 cursor-pointer shrink-0"
+                      title="Reset to factory SVG default"
+                    >
+                      <RotateCcw className="w-3 h-3" />
+                      <span>Reset</span>
+                    </button>
+                  )}
+                </div>
+
+                {/* Live Dark Preview Badge */}
+                <div className="h-14 rounded-xl bg-slate-950 border border-slate-800 p-2 flex items-center justify-center shadow-inner">
+                  {effective.url ? (
+                    <img
+                      src={effective.url}
+                      alt="Logo 1 Preview"
+                      className="max-h-full max-w-full object-contain"
+                    />
+                  ) : (
+                    <span className="text-xs text-slate-500">No Logo Loaded</span>
+                  )}
+                </div>
+
+                <ImageUploadField
+                  label="Upload Custom Logo File or Paste Image URL"
+                  value={formData.templateLogoPresets?.['official-badge'] || ''}
+                  onChange={(val) => {
+                    setFormData({
+                      ...formData,
+                      templateLogoPresets: {
+                        ...(formData.templateLogoPresets || {}),
+                        'official-badge': val
+                      }
+                    });
+                  }}
+                  theme={theme}
+                  placeholder="https://... or upload transparent PNG/SVG"
+                  helperText="Replaces the 3D Metallic Emblem across all product presentation templates."
+                  previewSize="sm"
+                  idPrefix="tpl-logo-preset-1"
+                />
+              </div>
+            );
+          })()}
+
+          {/* Slot 2: Clean White Minimal Logo */}
+          {(() => {
+            const isCustom = Boolean(formData.templateLogoPresets?.['white-minimal']);
+            const effective = getEffectivePresetLogoInfo('white-minimal', formData.templateLogoPresets);
+            return (
+              <div className="p-4 rounded-2xl border border-slate-200 bg-slate-50/70 space-y-3">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="font-bold text-xs text-slate-900 flex items-center gap-1.5">
+                      <span>Logo 2: Clean White Minimal Logo</span>
+                      {isCustom && (
+                        <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
+                          Custom File Set
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[10px] text-slate-500 truncate">
+                      Pure white monochrome mark optimized for dark card templates
+                    </p>
+                  </div>
+                  
+                  {isCustom && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const updated = { ...(formData.templateLogoPresets || {}) };
+                        delete updated['white-minimal'];
+                        setFormData({ ...formData, templateLogoPresets: updated });
+                      }}
+                      className="text-[10px] font-bold text-amber-700 hover:text-amber-800 flex items-center gap-1 cursor-pointer shrink-0"
+                      title="Reset to factory SVG default"
+                    >
+                      <RotateCcw className="w-3 h-3" />
+                      <span>Reset</span>
+                    </button>
+                  )}
+                </div>
+
+                {/* Live Dark Preview Badge */}
+                <div className="h-14 rounded-xl bg-slate-950 border border-slate-800 p-2 flex items-center justify-center shadow-inner">
+                  {effective.url ? (
+                    <img
+                      src={effective.url}
+                      alt="Logo 2 Preview"
+                      className="max-h-full max-w-full object-contain"
+                    />
+                  ) : (
+                    <span className="text-xs text-slate-500">No Logo Loaded</span>
+                  )}
+                </div>
+
+                <ImageUploadField
+                  label="Upload Custom Logo File or Paste Image URL"
+                  value={formData.templateLogoPresets?.['white-minimal'] || ''}
+                  onChange={(val) => {
+                    setFormData({
+                      ...formData,
+                      templateLogoPresets: {
+                        ...(formData.templateLogoPresets || {}),
+                        'white-minimal': val
+                      }
+                    });
+                  }}
+                  theme={theme}
+                  placeholder="https://... or upload transparent PNG/SVG"
+                  helperText="Replaces the White Minimal mark across all product presentation templates."
+                  previewSize="sm"
+                  idPrefix="tpl-logo-preset-2"
+                />
+              </div>
+            );
+          })()}
+
+          {/* Slot 3: Crimson Laser Red Accent Logo */}
+          {(() => {
+            const isCustom = Boolean(formData.templateLogoPresets?.['red-accent']);
+            const effective = getEffectivePresetLogoInfo('red-accent', formData.templateLogoPresets);
+            return (
+              <div className="p-4 rounded-2xl border border-slate-200 bg-slate-50/70 space-y-3">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="font-bold text-xs text-slate-900 flex items-center gap-1.5">
+                      <span>Logo 3: Crimson Laser Red Accent</span>
+                      {isCustom && (
+                        <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
+                          Custom File Set
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[10px] text-slate-500 truncate">
+                      Vibrant laser-red accent badge for high-contrast presentation cards
+                    </p>
+                  </div>
+                  
+                  {isCustom && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const updated = { ...(formData.templateLogoPresets || {}) };
+                        delete updated['red-accent'];
+                        setFormData({ ...formData, templateLogoPresets: updated });
+                      }}
+                      className="text-[10px] font-bold text-amber-700 hover:text-amber-800 flex items-center gap-1 cursor-pointer shrink-0"
+                      title="Reset to factory SVG default"
+                    >
+                      <RotateCcw className="w-3 h-3" />
+                      <span>Reset</span>
+                    </button>
+                  )}
+                </div>
+
+                {/* Live Dark Preview Badge */}
+                <div className="h-14 rounded-xl bg-slate-950 border border-slate-800 p-2 flex items-center justify-center shadow-inner">
+                  {effective.url ? (
+                    <img
+                      src={effective.url}
+                      alt="Logo 3 Preview"
+                      className="max-h-full max-w-full object-contain"
+                    />
+                  ) : (
+                    <span className="text-xs text-slate-500">No Logo Loaded</span>
+                  )}
+                </div>
+
+                <ImageUploadField
+                  label="Upload Custom Logo File or Paste Image URL"
+                  value={formData.templateLogoPresets?.['red-accent'] || ''}
+                  onChange={(val) => {
+                    setFormData({
+                      ...formData,
+                      templateLogoPresets: {
+                        ...(formData.templateLogoPresets || {}),
+                        'red-accent': val
+                      }
+                    });
+                  }}
+                  theme={theme}
+                  placeholder="https://... or upload transparent PNG/SVG"
+                  helperText="Replaces the Crimson Red Accent mark across all product presentation templates."
+                  previewSize="sm"
+                  idPrefix="tpl-logo-preset-3"
+                />
+              </div>
+            );
+          })()}
+
+          {/* Slot 4: Secondary / Custom Brand Logo */}
+          {(() => {
+            const isCustom = Boolean(formData.templateLogoPresets?.custom);
+            const effective = getEffectivePresetLogoInfo('custom', formData.templateLogoPresets);
+            return (
+              <div className="p-4 rounded-2xl border border-slate-200 bg-slate-50/70 space-y-3">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="font-bold text-xs text-slate-900 flex items-center gap-1.5">
+                      <span>Logo 4: Secondary / Custom Brand Logo</span>
+                      {isCustom && (
+                        <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
+                          Active Preset
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[10px] text-slate-500 truncate">
+                      Global custom brand logo, distributor emblem, or secondary company mark
+                    </p>
+                  </div>
+                  
+                  {isCustom && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const updated = { ...(formData.templateLogoPresets || {}) };
+                        delete updated.custom;
+                        setFormData({ ...formData, templateLogoPresets: updated });
+                      }}
+                      className="text-[10px] font-bold text-red-600 hover:text-red-700 flex items-center gap-1 cursor-pointer shrink-0"
+                      title="Clear custom logo"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                      <span>Clear</span>
+                    </button>
+                  )}
+                </div>
+
+                {/* Live Dark Preview Badge */}
+                <div className="h-14 rounded-xl bg-slate-950 border border-slate-800 p-2 flex items-center justify-center shadow-inner">
+                  {effective.url ? (
+                    <img
+                      src={effective.url}
+                      alt="Logo 4 Preview"
+                      className="max-h-full max-w-full object-contain"
+                    />
+                  ) : (
+                    <span className="text-xs text-slate-400">
+                      No custom logo uploaded yet
+                    </span>
+                  )}
+                </div>
+
+                <ImageUploadField
+                  label="Upload Secondary Brand Logo or Paste Image URL"
+                  value={formData.templateLogoPresets?.custom || ''}
+                  onChange={(val) => {
+                    setFormData({
+                      ...formData,
+                      templateLogoPresets: {
+                        ...(formData.templateLogoPresets || {}),
+                        custom: val
+                      }
+                    });
+                  }}
+                  theme={theme}
+                  placeholder="https://... or upload transparent PNG/SVG"
+                  helperText="Acts as the default custom logo for the 'Custom Logo' option across all product templates."
+                  previewSize="sm"
+                  idPrefix="tpl-logo-preset-4"
+                />
+              </div>
+            );
+          })()}
 
         </div>
       </div>

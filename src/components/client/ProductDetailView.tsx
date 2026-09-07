@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   ArrowLeft, 
   CheckCircle2, 
@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { ProductItem, SiteSettings, ProductCategoryDef } from '../../types';
 import { buildWhatsAppLink } from '../../utils/whatsapp';
+import { ProductTemplateRenderer } from './templates/ProductTemplateRenderer';
 
 interface ProductDetailViewProps {
   product: ProductItem;
@@ -36,6 +37,39 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
   onOpenBrand
 }) => {
   const [quantity, setQuantity] = useState(product.moq || 1);
+
+  // Gather all unique images for the product
+  const allImages = useMemo(() => {
+    const list: string[] = [];
+    if (product.imageUrl && typeof product.imageUrl === 'string' && product.imageUrl.trim()) {
+      list.push(product.imageUrl.trim());
+    }
+    if (product.galleryImages && Array.isArray(product.galleryImages)) {
+      product.galleryImages.forEach(img => {
+        if (img && typeof img === 'string' && img.trim() && !list.includes(img.trim())) {
+          list.push(img.trim());
+        }
+      });
+    }
+    return list;
+  }, [product.imageUrl, product.galleryImages]);
+
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
+
+  // Reset selected image index when viewing another product
+  useEffect(() => {
+    setActiveImageIndex(0);
+    setQuantity(product.moq || 1);
+  }, [product.id, product.moq]);
+
+  const activeImage = allImages[activeImageIndex] || product.imageUrl;
+
+  const currentDisplayProduct = useMemo(() => {
+    return {
+      ...product,
+      imageUrl: activeImage
+    };
+  }, [product, activeImage]);
 
   const relatedProducts = allProducts
     .filter(p => p.id !== product.id && (p.category === product.category || p.brand === product.brand))
@@ -94,24 +128,54 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
           
           {/* LEFT: Large Image Gallery */}
           <div className="w-full lg:w-1/2 space-y-4">
-            <div className="relative aspect-square w-full rounded-3xl overflow-hidden bg-[var(--surface)] border border-[var(--border)] shadow-sm flex items-center justify-center p-8 group">
-              <img
-                src={product.image || product.imageUrl}
-                alt={product.title}
-                className="max-w-full max-h-full object-contain drop-shadow-2xl mix-blend-multiply group-hover:scale-105 transition-transform duration-500 ease-out"
-                referrerPolicy="no-referrer"
+            <div className="relative aspect-square w-full rounded-3xl overflow-hidden bg-[var(--surface)] border border-[var(--border)] shadow-sm flex items-center justify-center p-2 sm:p-4 group">
+              <ProductTemplateRenderer
+                product={currentDisplayProduct}
+                settings={settings}
+                mode="detail"
+                className="w-full h-full"
               />
             </div>
-            {/* Thumbnail row if multiple images exist - mimicking gallery */}
-            <div className="flex gap-4 overflow-x-auto pb-2">
-              <div className="w-20 h-20 shrink-0 rounded-xl border-2 border-[var(--primary)] bg-[var(--surface)] p-2 cursor-pointer flex items-center justify-center">
-                 <img
-                  src={product.image || product.imageUrl}
-                  alt={product.title}
-                  className="w-full h-full object-contain mix-blend-multiply"
-                />
+
+            {/* Thumbnail row: ONLY shown if there is more than 1 image (laptop & mobile view) */}
+            {allImages.length > 1 && (
+              <div className="space-y-2 pt-1">
+                <div className="flex items-center justify-between text-xs font-bold text-[var(--text-secondary)] px-1">
+                  <span>Product Views ({allImages.length} images)</span>
+                  <span className="text-[10px] opacity-75">Click image to switch preview</span>
+                </div>
+                <div className="flex items-center gap-3 overflow-x-auto pb-2 pt-1 px-0.5 scrollbar-thin">
+                  {allImages.map((imgUrl, idx) => {
+                    const isSelected = idx === activeImageIndex;
+                    return (
+                      <button
+                        key={`${imgUrl}-${idx}`}
+                        type="button"
+                        onClick={() => setActiveImageIndex(idx)}
+                        className={`w-18 h-18 sm:w-20 sm:h-20 shrink-0 rounded-2xl overflow-hidden cursor-pointer transition-all duration-200 p-0.5 relative group border-2 ${
+                          isSelected
+                            ? 'border-[var(--primary)] ring-2 ring-[var(--primary)]/30 shadow-md scale-102'
+                            : 'border-[var(--border)] hover:border-[var(--primary)]/60 bg-[var(--surface)] opacity-70 hover:opacity-100'
+                        }`}
+                        title={`View image ${idx + 1}`}
+                      >
+                        <img
+                          src={imgUrl}
+                          alt={`${product.title} view ${idx + 1}`}
+                          className="w-full h-full object-cover rounded-xl"
+                          loading="lazy"
+                          decoding="async"
+                          referrerPolicy="no-referrer"
+                        />
+                        {isSelected && (
+                          <div className="absolute inset-0 bg-[var(--primary)]/10 rounded-xl pointer-events-none" />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
+            )}
           </div>
 
           {/* RIGHT: Product Information & CTAs */}
@@ -354,12 +418,11 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
                   }}
                   className="group bg-[var(--surface)] border border-[var(--border)] rounded-2xl overflow-hidden cursor-pointer shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col"
                 >
-                  <div className="relative aspect-square w-full bg-black/5 overflow-hidden p-6 flex items-center justify-center">
-                    <img
-                      src={rel.image || rel.imageUrl}
-                      alt={rel.title}
-                      className="max-w-full max-h-full object-contain group-hover:scale-110 transition-transform duration-700 ease-out mix-blend-multiply"
-                      referrerPolicy="no-referrer"
+                  <div className="relative aspect-square w-full overflow-hidden bg-black/5 flex items-center justify-center">
+                    <ProductTemplateRenderer
+                      product={rel}
+                      mode="card"
+                      className="w-full h-full"
                     />
                   </div>
                   <div className="p-5 flex flex-col flex-grow">

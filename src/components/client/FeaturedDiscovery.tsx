@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Search, ArrowRight, Package, Sparkles, TrendingUp, Flame } from 'lucide-react';
 import { ProductItem, SiteSettings, InquiryRecord } from '../../types';
 import { loadInquiries } from '../../lib/storage';
+import { ProductTemplateRenderer } from './templates/ProductTemplateRenderer';
 
 interface FeaturedDiscoveryProps {
   products: ProductItem[];
@@ -161,18 +162,12 @@ export const FeaturedDiscovery: React.FC<FeaturedDiscoveryProps> = ({
                 className="group bg-[var(--surface)] border border-[var(--border)] rounded-2xl sm:rounded-3xl overflow-hidden cursor-pointer shadow-2xs hover:shadow-lg transition-all duration-300 flex flex-col active:scale-[0.98]"
               >
                 {/* Image Area */}
-                <div className="relative aspect-square w-full bg-[var(--surface-secondary)]/50 overflow-hidden p-3 sm:p-5 flex items-center justify-center">
-                  <img
-                    src={productImage}
-                    alt={product.title}
-                    referrerPolicy="no-referrer"
-                    onError={(e) => {
-                      const target = e.currentTarget;
-                      target.onerror = null;
-                      target.src = 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=600&q=80';
-                    }}
-                    className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-500 drop-shadow-sm"
-                    loading="lazy"
+                <div className="relative aspect-square w-full bg-[var(--surface-secondary)]/50 overflow-hidden p-1.5 sm:p-2.5 flex items-center justify-center">
+                  <ProductTemplateRenderer
+                    product={product}
+                    mode="card"
+                    className="w-full h-full"
+                    imgClassName="w-full h-full object-contain group-hover:scale-105 transition-transform duration-500 drop-shadow-sm"
                   />
                   
                   {/* Badges Overlay */}

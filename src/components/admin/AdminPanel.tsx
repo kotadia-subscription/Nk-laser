@@ -82,6 +82,7 @@ import { AdminInquiriesView } from './views/AdminInquiriesView';
 import { AdminReviewsView } from './views/AdminReviewsView';
 import { AdminSettingsView } from './views/AdminSettingsView';
 import { AdminSecurityView } from './views/AdminSecurityView';
+import { ProductEditPageView } from './views/ProductEditPageView';
 import { ProductEditModal } from './modals/ProductEditModal';
 import { CategoryEditModal } from './modals/CategoryEditModal';
 import { BrandEditModal } from './modals/BrandEditModal';
@@ -1013,6 +1014,29 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     reviews: reviews.length
   };
 
+  // Render Dedicated Full-Page Product Editor when editing or creating a product
+  if (editingProduct) {
+    return (
+      <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-50">
+        <ProductEditPageView
+          theme={theme}
+          product={editingProduct}
+          categories={categories}
+          brands={brands}
+          powerRanges={powerRanges}
+          settings={settings}
+          onSave={handleSaveProduct}
+          onBack={() => setEditingProduct(null)}
+          onClose={() => setEditingProduct(null)}
+          onOpenSettings={() => {
+            setEditingProduct(null);
+            setActiveTab('settings');
+          }}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex overflow-hidden transition-colors bg-slate-50 text-slate-900">
       
@@ -1198,18 +1222,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       </div>
 
       {/* MODALS */}
-      {editingProduct && (
-        <ProductEditModal
-          theme={theme}
-          product={editingProduct}
-          categories={categories}
-          brands={brands}
-          powerRanges={powerRanges}
-          onSave={handleSaveProduct}
-          onClose={() => setEditingProduct(null)}
-        />
-      )}
-
       {editingCategory && (
         <CategoryEditModal
           theme={theme}

@@ -11,6 +11,7 @@ import { ProductItem, SiteSettings } from '../../types';
 import { buildWhatsAppLink, createProductInquiryMessage } from '../../utils/whatsapp';
 import { SectionHeading } from '../common/SectionHeading';
 import { WhatsAppIcon } from '../common/WhatsAppIcon';
+import { ProductTemplateRenderer } from './templates/ProductTemplateRenderer';
 
 interface ProductGalleryProps {
   products: ProductItem[];
@@ -163,31 +164,29 @@ export const ProductGallery: React.FC<ProductGalleryProps> = ({
               >
                 <div>
                   {/* Image Header */}
-                  <div className="relative h-32 sm:h-48 overflow-hidden bg-zinc-800">
-                    <img
-                      src={product.imageUrl}
-                      alt={product.title}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                      referrerPolicy="no-referrer"
+                  <div className="relative h-36 sm:h-52 overflow-hidden bg-zinc-950">
+                    <ProductTemplateRenderer
+                      product={product}
+                      mode="card"
+                      className="w-full h-full"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-transparent to-transparent opacity-60" />
 
                     {/* Popular Badge */}
                     {product.isPopular && (
-                      <span className="absolute top-1.5 left-1.5 sm:top-3 sm:left-3 bg-amber-500 text-zinc-950 text-[9px] sm:text-[10px] font-extrabold px-1.5 sm:px-2 py-0.5 rounded-md sm:rounded-lg shadow-md">
+                      <span className="absolute top-1.5 left-1.5 sm:top-3 sm:left-3 z-10 bg-amber-500 text-zinc-950 text-[9px] sm:text-[10px] font-extrabold px-1.5 sm:px-2 py-0.5 rounded-md sm:rounded-lg shadow-md">
                         FEATURED
                       </span>
                     )}
 
                     {/* Material Tag */}
-                    <span className="absolute top-1.5 right-1.5 sm:top-3 sm:right-3 bg-zinc-900/90 backdrop-blur border border-zinc-700 text-amber-400 text-[8px] sm:text-[10px] font-mono px-1.5 sm:px-2 py-0.5 rounded-md sm:rounded-lg truncate max-w-[55%]">
+                    <span className="absolute top-1.5 right-1.5 sm:top-3 sm:right-3 z-10 bg-zinc-900/90 backdrop-blur border border-zinc-700 text-amber-400 text-[8px] sm:text-[10px] font-mono px-1.5 sm:px-2 py-0.5 rounded-md sm:rounded-lg truncate max-w-[55%]">
                       {product.material}
                     </span>
 
                     {/* Quick Preview Button Overlay */}
                     <button
                       onClick={() => setActiveModalProduct(product)}
-                      className="absolute inset-0 hidden sm:flex items-center justify-center bg-zinc-950/70 opacity-0 group-hover:opacity-100 transition-opacity text-white font-bold text-xs gap-1.5 backdrop-blur-xs cursor-pointer"
+                      className="absolute inset-0 z-10 hidden sm:flex items-center justify-center bg-zinc-950/70 opacity-0 group-hover:opacity-100 transition-opacity text-white font-bold text-xs gap-1.5 backdrop-blur-xs cursor-pointer"
                     >
                       <Eye className="w-4 h-4 text-amber-400" />
                       <span>View Specifications</span>
@@ -255,14 +254,12 @@ export const ProductGallery: React.FC<ProductGalleryProps> = ({
                 <X className="w-5 h-5" />
               </button>
 
-              <div className="relative h-64 bg-zinc-950">
-                <img
-                  src={activeModalProduct.imageUrl}
-                  alt={activeModalProduct.title}
-                  className="w-full h-full object-cover"
-                  referrerPolicy="no-referrer"
+              <div className="relative h-64 sm:h-72 bg-zinc-950 overflow-hidden">
+                <ProductTemplateRenderer
+                  product={activeModalProduct}
+                  mode="detail"
+                  className="w-full h-full"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-zinc-900 via-transparent to-transparent" />
               </div>
 
               <div className="p-6 space-y-4">
