@@ -4,3 +4,11 @@ pages_build_output_dir = "dist"
 
 # Node.js compatibility for Pages Functions
 compatibility_flags = ["nodejs_compat"]
+
+# Cloudflare D1 Database Binding for Persistent Storage
+# Automatically populated by deploy-pages.sh or set with your D1 database ID
+[[d1_databases]]
+binding = "DB"
+database_name = "nk-laser-db"
+database_id = ""
+
