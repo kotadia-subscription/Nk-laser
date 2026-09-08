@@ -6,9 +6,15 @@ pages_build_output_dir = "dist"
 compatibility_flags = ["nodejs_compat"]
 
 # Cloudflare D1 Database Binding for Persistent Storage
-# Automatically populated by deploy-pages.sh or set with your D1 database ID
-[[d1_databases]]
-binding = "DB"
-database_name = "nk-laser-db"
-database_id = ""
+# Option 1 (Recommended for Git deployments): Bind in Cloudflare Dashboard:
+#   Pages > Settings > Functions > D1 database bindings:
+#   Variable name: DB | D1 database: nk-laser-db
+#
+# Option 2 (Via wrangler.toml): If binding via file, replace with your real 36-char database_id
+# obtained from `npx wrangler d1 create nk-laser-db`.
+# (Do not leave database_id as empty string "" or Cloudflare will throw Error 8000022)
+# [[d1_databases]]
+# binding = "DB"
+# database_name = "nk-laser-db"
+# database_id = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
 
