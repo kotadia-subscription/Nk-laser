@@ -69,6 +69,29 @@ npx wrangler secret put GEMINI_API_KEY --config wrangler.worker.toml
 
 ## 2. Server Data Persistence & Zero Data Loss (Cloudflare D1)
 
+### Fixing "Error 8000022: Invalid database UUID ()"
+If your Cloudflare Pages build log displays:
+`Error: Failed to publish your Function. Got error: Error 8000022: Invalid database UUID ()`
+This occurs when `wrangler.toml` contains `[[d1_databases]]` with an empty string `database_id = ""`. Cloudflare's Function compiler validates database IDs against the standard 36-character UUID format (`xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`).
+
+**How to configure D1 correctly:**
+- **For GitHub Git-connected Cloudflare Pages (Recommended)**:
+  Leave `[[d1_databases]]` commented out in `wrangler.toml`. Instead, bind the database in the Cloudflare Dashboard:
+  1. Go to **Cloudflare Dashboard** > **Workers & Pages** > **`nk-laser`**.
+  2. Click **Settings** > **Functions**.
+  3. Scroll down to **D1 database bindings** and click **Add binding**:
+     - **Variable name**: `DB`
+     - **D1 database**: Select `nk-laser-db` from the dropdown.
+  4. Click **Save**. Any subsequent push to GitHub will deploy cleanly!
+- **For Wrangler / CLI Deployments**:
+  Run `./deploy-pages.sh`, which automatically runs `npx wrangler d1 create nk-laser-db`, grabs the real UUID, updates `wrangler.toml`, applies `d1-schema.sql`, and deploys.
+
+### Fixing "Infinite loop detected in this rule: /* /index.html 200"
+Cloudflare Pages automatically normalizes URLs by stripping `.html`. A rewrite rule in `_redirects` matching `/*` to `/index.html` causes an infinite rewrite loop that Cloudflare detects and ignores.
+We fixed this by removing `_redirects` and generating `dist/200.html` during `npm run build`. Cloudflare Pages natively uses `200.html` to serve all client-side Single Page Application (SPA) routes without warnings or loops.
+
+---
+
 ### Why Local JSON Files Do Not Persist on Cloudflare
 In containerized environments (like Google Cloud Run or Docker), the backend writes to `app-config.json` on the disk. On Cloudflare (both Pages and Workers), the edge runtime is **ephemeral and immutable**:
 - Static assets in `dist/` are read-only.

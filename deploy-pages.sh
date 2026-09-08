@@ -63,11 +63,15 @@ fi
 # Automatically update wrangler.toml if database_id is present
 if [ -n "$DATABASE_ID" ]; then
   echo -e "${CYAN}Configuring D1 binding in wrangler.toml with database_id: ${DATABASE_ID}...${NC}"
-  # Update database_id in wrangler.toml
   node -e "
     const fs = require('fs');
     let toml = fs.readFileSync('wrangler.toml', 'utf8');
-    toml = toml.replace(/database_id\s*=\s*\"[^\"]*\"/, 'database_id = \"${DATABASE_ID}\"');
+    if (!toml.includes('binding = \"DB\"') || toml.includes('# [[d1_databases]]')) {
+      toml = toml.replace(/# \[\[d1_databases\]\][\s\S]*?database_id = \"[^\"]*\"/, '');
+      toml = toml.trim() + '\n\n[[d1_databases]]\nbinding = \"DB\"\ndatabase_name = \"nk-laser-db\"\ndatabase_id = \"${DATABASE_ID}\"\n';
+    } else {
+      toml = toml.replace(/database_id\s*=\s*\"[^\"]*\"/, 'database_id = \"${DATABASE_ID}\"');
+    }
     fs.writeFileSync('wrangler.toml', toml);
   "
 fi

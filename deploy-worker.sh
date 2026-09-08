@@ -65,7 +65,12 @@ if [ -n "$DATABASE_ID" ]; then
   node -e "
     const fs = require('fs');
     let toml = fs.readFileSync('${WORKER_CONFIG}', 'utf8');
-    toml = toml.replace(/database_id\s*=\s*\"[^\"]*\"/, 'database_id = \"${DATABASE_ID}\"');
+    if (!toml.includes('binding = \"DB\"') || toml.includes('# [[d1_databases]]')) {
+      toml = toml.replace(/# \[\[d1_databases\]\][\s\S]*?database_id = \"[^\"]*\"/, '');
+      toml = toml.trim() + '\n\n[[d1_databases]]\nbinding = \"DB\"\ndatabase_name = \"nk-laser-db\"\ndatabase_id = \"${DATABASE_ID}\"\n';
+    } else {
+      toml = toml.replace(/database_id\s*=\s*\"[^\"]*\"/, 'database_id = \"${DATABASE_ID}\"');
+    }
     fs.writeFileSync('${WORKER_CONFIG}', toml);
   "
 fi
