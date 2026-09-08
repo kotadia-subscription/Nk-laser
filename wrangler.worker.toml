@@ -1,0 +1,16 @@
+name = "nk-laser"
+main = "worker.ts"
+compatibility_date = "2024-09-01"
+compatibility_flags = ["nodejs_compat"]
+
+[assets]
+directory = "./dist"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
+
+# Cloudflare D1 Database Binding
+# Replace database_id with your database ID from: npx wrangler d1 create nk-laser-db
+[[d1_databases]]
+binding = "DB"
+database_name = "nk-laser-db"
+database_id = ""
