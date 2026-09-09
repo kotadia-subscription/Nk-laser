@@ -78,7 +78,6 @@ import {
   loadReviews
 } from '../../../lib/storage';
 import { ImportDataModal, ImportEntity } from '../modals/ImportDataModal';
-import { DEFAULT_SITE_SETTINGS } from '../../../data/settingsData';
 
 interface AdminSettingsViewProps {
   theme: 'light' | 'dark';
@@ -96,9 +95,6 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({
   const initializeAddresses = (inputSettings: SiteSettings): BusinessAddress[] => {
     if (Array.isArray(inputSettings.addresses) && inputSettings.addresses.length > 0) {
       return inputSettings.addresses;
-    }
-    if (Array.isArray(DEFAULT_SITE_SETTINGS.addresses) && DEFAULT_SITE_SETTINGS.addresses.length > 0) {
-      return [...DEFAULT_SITE_SETTINGS.addresses];
     }
     return [
       {

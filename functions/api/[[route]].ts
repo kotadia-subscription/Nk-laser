@@ -15,7 +15,7 @@ import {
   STORE_CATEGORIES, 
   INITIAL_BRANDS, 
   INITIAL_REVIEWS 
-} from '../../src/data/initialData';
+} from '../../server/seedData';
 import { ProductItem, ProductCategoryDef, BrandItem, ReviewItem, SiteSettings } from '../../src/types';
 
 const DEFAULT_POWER_RANGES = ['1kW - 3kW', '3kW - 6kW', '6kW - 12kW', '12kW - 30kW', '30kW+'];

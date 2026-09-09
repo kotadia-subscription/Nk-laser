@@ -1,9 +1,52 @@
 import { SiteSettings, ServiceItem, ProductItem, InquiryRecord, BrandAuditItem, ReviewItem, BrandItem, ProductCategoryDef, FullAppConfigurationBackup, ConfigSnapshot, BusinessAddress } from '../types';
-import { DEFAULT_SITE_SETTINGS, INITIAL_SERVICES, INITIAL_PRODUCTS, INITIAL_REVIEWS, INITIAL_BRANDS, STORE_CATEGORIES } from '../data/initialData';
 import { sha256Hex, encryptAESGCM, decryptAESGCM } from './crypto';
 import { getAdminToken } from './api';
 
 export const DEFAULT_POWER_RANGES = ['1kW - 3kW', '3kW - 6kW', '6kW - 12kW', '12kW - 30kW', '30kW+'];
+
+export const DEFAULT_SITE_SETTINGS: SiteSettings = {
+  businessName: "NK Laser Spares & Optics",
+  tagline: "Direct Importers of Fiber Laser Spares, RayTools/OSPRI/WSX Consumables & Optics",
+  whatsappNumber: "+919902035374",
+  whatsappDisplay: "+91 99020 35374",
+  email: "nklaser33@gmail.com",
+  phoneDisplay: "+91 99020 35374",
+  address: "Plot No. 42, GIDC Industrial Area, Sector 3, Gujarat, India",
+  addresses: [],
+  workingHours: "Mon - Sat: 8:30 AM - 8:00 PM | Sun: By Appointment",
+  logoUrl: "/images/logo/nk-laser-logo.svg",
+  warehouseBannerUrl: "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=800&q=80",
+  instagramUrl: "https://www.instagram.com/laser.nk",
+  socialLinks: {
+    instagram: "https://www.instagram.com/laser.nk"
+  },
+  themeMode: 'light',
+  primaryColor: '#162657',
+  accentColor: '#E51024',
+  showPricing: true,
+  dxfUploadNotice: "Send part numbers, photos, or machine models on WhatsApp for instant spare parts quotation.",
+  heroTitle: "Direct Importer of Fiber Laser Spares, Optics & Consumables",
+  heroSubtitle: "Genuine RayTools, OSPRI, WSX, BOCHU, Precitec & SMC parts with fast 1-2 days express delivery across India.",
+  noticeBannerText: "⚡ DIRECT IMPORTER: RayTools, OSPRI & WSX Lenses, Nozzles, Ceramics & Heads in Stock with 1-2 Days Express Delivery across India!",
+  showNoticeBanner: true,
+  features: {
+    showPrices: true,
+    whatsappChat: true,
+    calculator: false
+  },
+  adminSecretKey: 'nk-vault-9921-x',
+  sectionsVisibility: {
+    hero: true,
+    services: false,
+    brands: true,
+    quoteCalculator: false,
+    products: true,
+    materials: false,
+    reviews: true,
+    contact: true,
+    footer: true
+  }
+};
 
 const KEYS = {
   SETTINGS: 'nklaser_site_settings_v3',
@@ -75,148 +118,7 @@ export const INITIAL_AUDIT_ITEMS: BrandAuditItem[] = [
   }
 ];
 
-export const INITIAL_INQUIRIES: InquiryRecord[] = [
-  {
-    id: 'inq-101',
-    createdAt: new Date(Date.now() - 3600000 * 2).toISOString(),
-    customerName: 'Mahesh Sharma',
-    customerPhone: '+91 98250 44551',
-    customerEmail: 'precision.laser@ahmedabad.com',
-    productOrService: 'Ceramic Lockig Ring - Raytool BM06k',
-    material: 'Zirconia Ceramic / Brass',
-    quantity: 10,
-    message: 'Urgent requirement for Raytools BM06k ceramic rings. We are running double shift on 6kW Bodor machine.',
-    status: 'New',
-    source: 'Product Inquiry',
-    specsSummary: 'Ceramic Lockig Ring - Raytool BM06k | SKU: NKL-CLK-101 | Qty: 10'
-  },
-  {
-    id: 'inq-102',
-    createdAt: new Date(Date.now() - 3600000 * 5).toISOString(),
-    customerName: 'Kunal Verma',
-    customerPhone: '+91 98791 22334',
-    customerEmail: 'kunal@suratsteel.in',
-    productOrService: 'Ceramic Lockig Ring - Raytool BM06k',
-    material: 'Zirconia Ceramic',
-    quantity: 25,
-    message: 'Need 25 pcs ceramic locking ring for BM06k head. Confirm immediate courier dispatch to Surat.',
-    status: 'In Progress',
-    source: 'Product Inquiry',
-    specsSummary: 'Ceramic Lockig Ring - Raytool BM06k | SKU: NKL-CLK-101 | Qty: 25'
-  },
-  {
-    id: 'inq-103',
-    createdAt: new Date(Date.now() - 3600000 * 9).toISOString(),
-    customerName: 'Vikas Engineering Works',
-    customerPhone: '+91 94265 99887',
-    customerEmail: 'vikas@enggworks.com',
-    productOrService: 'Ceramic Lockig Ring - Raytool BM06k',
-    material: 'Zirconia Ceramic',
-    quantity: 5,
-    message: 'Quotation for Raytool BM06k sensor body ring replacement.',
-    status: 'Quoted',
-    source: 'Product Inquiry',
-    specsSummary: 'Ceramic Lockig Ring - Raytool BM06k | SKU: NKL-CLK-101 | Qty: 5'
-  },
-  {
-    id: 'inq-104',
-    createdAt: new Date(Date.now() - 3600000 * 12).toISOString(),
-    customerName: 'Apex FabriTech',
-    customerPhone: '+91 98112 33445',
-    customerEmail: 'purchase@apexfab.co.in',
-    productOrService: 'Ceramic Lockig Ring - Raytool BM110',
-    material: 'Zirconia Ceramic / Brass Thread',
-    quantity: 15,
-    message: 'Need BM110 ceramic locking rings for our 12kW fiber laser cutting heads. Share bulk pricing.',
-    status: 'New',
-    source: 'Product Inquiry',
-    specsSummary: 'Ceramic Lockig Ring - Raytool BM110 | SKU: NKL-CLK-103 | Qty: 15'
-  },
-  {
-    id: 'inq-105',
-    createdAt: new Date(Date.now() - 3600000 * 18).toISOString(),
-    customerName: 'Sanjay Gupta',
-    customerPhone: '+91 97234 11223',
-    customerEmail: 'sanjay@delhicnc.in',
-    productOrService: 'Ceramic Lockig Ring - Raytool BM110',
-    material: 'Zirconia Ceramic / Brass Thread',
-    quantity: 8,
-    message: 'Require Raytool BM110 ceramic ring with sensor lock nut.',
-    status: 'In Progress',
-    source: 'Product Inquiry',
-    specsSummary: 'Ceramic Lockig Ring - Raytool BM110 | SKU: NKL-CLK-103 | Qty: 8'
-  },
-  {
-    id: 'inq-106',
-    createdAt: new Date(Date.now() - 3600000 * 22).toISOString(),
-    customerName: 'Rajesh Patel',
-    customerPhone: '+91 98250 12345',
-    customerEmail: 'rajesh.patel@steelworks.in',
-    productOrService: 'Ceramic Lockig Ring - Raytool BM109',
-    material: 'Zirconia Ceramic',
-    quantity: 12,
-    message: 'Inquiring for Raytool BM109 ceramic rings for 3kW laser head.',
-    status: 'Quoted',
-    source: 'Product Inquiry',
-    specsSummary: 'Ceramic Lockig Ring - Raytool BM109 | SKU: NKL-CLK-102 | Qty: 12'
-  },
-  {
-    id: 'inq-107',
-    createdAt: new Date(Date.now() - 3600000 * 26).toISOString(),
-    customerName: 'Anand Laser Pune',
-    customerPhone: '+91 99011 44556',
-    customerEmail: 'procure@anandlaser.in',
-    productOrService: 'Ceramic Lockig Ring - Raytool BM111',
-    material: 'Zirconia Ceramic',
-    quantity: 6,
-    message: 'Need BM111 ceramic locking ring suitable for Raytools autofocus cutting head.',
-    status: 'New',
-    source: 'Product Inquiry',
-    specsSummary: 'Ceramic Lockig Ring - Raytool BM111 | SKU: NKL-CLK-104 | Qty: 6'
-  },
-  {
-    id: 'inq-108',
-    createdAt: new Date(Date.now() - 3600000 * 30).toISOString(),
-    customerName: 'Shree Ram Laser Tech',
-    customerPhone: '+91 94140 77889',
-    customerEmail: 'shreeramlaser@gmail.com',
-    productOrService: 'Ceramic Lockig Ring - Raytool BM114',
-    material: 'Zirconia Ceramic / Brass',
-    quantity: 4,
-    message: 'Looking for BM114 ceramic ring for heavy plate fiber laser machine.',
-    status: 'In Progress',
-    source: 'Product Inquiry',
-    specsSummary: 'Ceramic Lockig Ring - Raytool BM114 | SKU: NKL-CLK-105 | Qty: 4'
-  },
-  {
-    id: 'inq-109',
-    createdAt: new Date(Date.now() - 3600000 * 35).toISOString(),
-    customerName: 'Deepak Metacraft',
-    customerPhone: '+91 98980 66778',
-    customerEmail: 'deepak@metacraft.co.in',
-    productOrService: 'Ceramic Lockig Ring - Raytool BT240',
-    material: 'Zirconia Ceramic',
-    quantity: 10,
-    message: 'Need BT240 manual focus ceramic rings with gold plated pins.',
-    status: 'Quoted',
-    source: 'Product Inquiry',
-    specsSummary: 'Ceramic Lockig Ring - Raytool BT240 | SKU: NKL-CLK-106 | Qty: 10'
-  },
-  {
-    id: 'inq-110',
-    createdAt: new Date(Date.now() - 3600000 * 42).toISOString(),
-    customerName: 'Dynamic CNC Works',
-    customerPhone: '+91 98450 33221',
-    customerEmail: 'info@dynamiccnc.com',
-    productOrService: 'Ceramic Lockig Ring - WSX NC63',
-    material: 'High-Purity Ceramic',
-    quantity: 8,
-    message: 'Looking for WSX NC63 sensor ring and locking nut.',
-    status: 'New',
-    source: 'Product Inquiry',
-    specsSummary: 'Ceramic Lockig Ring - WSX NC63 | SKU: NKL-CLK-107 | Qty: 8'
-  }
-];
+export const INITIAL_INQUIRIES: InquiryRecord[] = [];
 
 export function loadReviews(): ReviewItem[] {
   try {
@@ -230,7 +132,7 @@ export function loadReviews(): ReviewItem[] {
   } catch (e) {
     console.error('Error loading reviews:', e);
   }
-  return INITIAL_REVIEWS;
+  return [];
 }
 
 export function saveReviews(reviews: ReviewItem[]): void {
@@ -249,7 +151,7 @@ export function loadBrands(): BrandItem[] {
   } catch (e) {
     console.error('Error loading brands:', e);
   }
-  return INITIAL_BRANDS;
+  return [];
 }
 
 export function saveBrands(brands: BrandItem[]): void {
@@ -431,7 +333,7 @@ export function loadServices(): ServiceItem[] {
   } catch (e) {
     console.error('Error loading services:', e);
   }
-  return INITIAL_SERVICES;
+  return [];
 }
 
 export function saveServices(services: ServiceItem[]): void {
@@ -451,7 +353,7 @@ export function loadProducts(): ProductItem[] {
   } catch (e) {
     console.error('Error loading products:', e);
   }
-  return INITIAL_PRODUCTS;
+  return [];
 }
 
 export function saveProducts(products: ProductItem[]): void {
@@ -471,7 +373,7 @@ export function loadInquiries(): InquiryRecord[] {
   } catch (e) {
     console.error('Error loading inquiries:', e);
   }
-  return INITIAL_INQUIRIES;
+  return [];
 }
 
 export function saveInquiries(inquiries: InquiryRecord[]): void {
@@ -799,7 +701,7 @@ export function loadCategories(): ProductCategoryDef[] {
   } catch (e) {
     console.error('Error loading categories:', e);
   }
-  return STORE_CATEGORIES;
+  return [];
 }
 
 export function saveCategories(categories: ProductCategoryDef[]): void {

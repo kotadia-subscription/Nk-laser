@@ -23,7 +23,6 @@ import {
   Share2
 } from 'lucide-react';
 import { ProductItem, SiteSettings, ProductCategoryDef } from '../../types';
-import { STORE_CATEGORIES } from '../../data/categoriesData';
 import { ShareCatalogModal } from './ShareCatalogModal';
 import { ProductTemplateRenderer } from './templates/ProductTemplateRenderer';
 
@@ -61,7 +60,7 @@ export function StoreCatalogView({
   onOpenQuickInquiry
 }: StoreCatalogViewProps) {
   const availableCategories = useMemo(() => {
-    return categories && categories.length > 0 ? categories : STORE_CATEGORIES;
+    return categories || [];
   }, [categories]);
 
   const availablePowerRanges = useMemo(() => {

@@ -4,7 +4,7 @@ import {
   FileCode, 
   ChevronDown
 } from 'lucide-react';
-import { MATERIAL_CAPABILITIES, FAQ_ITEMS } from '../../data/initialData';
+import { MATERIAL_CAPABILITIES, FAQ_ITEMS } from '../../data/materialsData';
 import { SiteSettings } from '../../types';
 import { buildWhatsAppLink } from '../../utils/whatsapp';
 import { SectionHeading } from '../common/SectionHeading';
