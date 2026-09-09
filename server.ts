@@ -365,6 +365,15 @@ async function startServer() {
     });
   });
 
+  // Real-time synchronization version endpoint polled by clients
+  app.get('/api/version', (req, res) => {
+    res.json({
+      success: true,
+      version: db.version,
+      lastPublishedAt: db.lastPublishedAt
+    });
+  });
+
   // Public Site Settings (Sanitized - NEVER exposes admin password hashes or internal tokens)
   app.get('/api/settings', (req, res) => {
     const s = db.settings || DEFAULT_SITE_SETTINGS;
