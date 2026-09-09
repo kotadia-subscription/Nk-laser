@@ -69,6 +69,48 @@ npx wrangler secret put GEMINI_API_KEY --config wrangler.worker.toml
 
 ## 2. Server Data Persistence & Zero Data Loss (Cloudflare D1)
 
+### Real-Time Live Synchronization Across All Devices
+When you make changes in the Admin Console (e.g. updating product pricing, stock status, categories, or site contact information) and click **Publish**:
+1. The changes are sent via `/api/admin/publish` directly into the remote Cloudflare D1 database and stored permanently in the `config` table.
+2. A new `lastPublishedAt` ISO timestamp is recorded in D1.
+3. Every open client tab or mobile device running your site polls `/api/version` every 12 seconds in the background (a tiny ~50-byte lightweight check with zero DB overhead).
+4. When a new `lastPublishedAt` timestamp is detected, the client automatically synchronizes with `/api/config` and re-renders the latest catalog data seamlessly.
+5. In the same browser across multiple open tabs, a native `BroadcastChannel('nk_laser_realtime_sync')` instantly updates other open tabs in 0ms!
+6. **No manual browser reload is required by your visitors or customers** — updates appear automatically everywhere.
+
+### Static Data (`src/data`) vs Cloudflare D1 Database
+- `src/data/` contains default fallback seed data used only during initial offline build or brand-new database bootstrapping.
+- **Cloudflare D1 is the single source of truth**: As soon as your site connects to D1, all catalog reads, search filters, and updates are served dynamically from D1.
+- Editing files in `src/data/` is no longer needed to update your live website; you can manage everything directly through the Admin Console (`/?admin=true`) or by synchronizing D1.
+
+### Future Database Schema Changes & Automated Migration
+When you want to add new columns, tables, or database indexes in the future:
+1. Update `d1-schema.sql` with your new tables, columns, or indexes (always using `CREATE TABLE IF NOT EXISTS` or `ALTER TABLE`).
+2. Run the one-click database sync command from your terminal:
+   ```bash
+   npm run db:sync
+   ```
+   Or execute the bash script:
+   ```bash
+   ./scripts/sync-database.sh
+   ```
+3. Because the master catalog data is stored using a document store inside D1's `config` table, you can also add any new product attributes (like custom specs, OEM part numbers, or material compatibility) directly without requiring any SQL schema migration!
+
+### Automated GitHub CI/CD Deployment with Cloudflare D1
+The repository includes a complete GitHub Actions workflow at `.github/workflows/deploy.yml`.
+Whenever you push changes or pull requests to your `main` branch on GitHub:
+1. GitHub Actions checks out the code and runs `npm run build`.
+2. It automatically executes any database schema changes in `d1-schema.sql` against your remote Cloudflare D1 database (`nk-laser-db`).
+3. It deploys the compiled application to Cloudflare Pages automatically.
+
+To enable GitHub Actions deployment:
+1. Go to your GitHub repository > **Settings** > **Secrets and variables** > **Actions**.
+2. Add the following repository secrets:
+   - `CLOUDFLARE_API_TOKEN`: Your Cloudflare API Token (with Cloudflare Pages and D1 permissions).
+   - `CLOUDFLARE_ACCOUNT_ID`: Your Cloudflare Account ID (found on your dashboard home page).
+
+---
+
 ### Fixing "Error 8000022: Invalid database UUID ()"
 If your Cloudflare Pages build log displays:
 `Error: Failed to publish your Function. Got error: Error 8000022: Invalid database UUID ()`

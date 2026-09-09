@@ -8,7 +8,11 @@
     "build": "vite build && node -e \"require('fs').copyFileSync('dist/index.html','dist/200.html')\" && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
     "start": "node dist/server.cjs",
     "clean": "rm -rf dist server.js",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "db:sync": "wrangler d1 execute nk-laser-db --file=./d1-schema.sql --remote",
+    "db:sync:local": "wrangler d1 execute nk-laser-db --file=./d1-schema.sql --local",
+    "deploy:pages": "bash deploy-pages.sh",
+    "deploy:worker": "bash deploy-worker.sh"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",

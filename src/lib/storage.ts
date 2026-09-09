@@ -1,6 +1,7 @@
 import { SiteSettings, ServiceItem, ProductItem, InquiryRecord, BrandAuditItem, ReviewItem, BrandItem, ProductCategoryDef, FullAppConfigurationBackup, ConfigSnapshot, BusinessAddress } from '../types';
 import { DEFAULT_SITE_SETTINGS, INITIAL_SERVICES, INITIAL_PRODUCTS, INITIAL_REVIEWS, INITIAL_BRANDS, STORE_CATEGORIES } from '../data/initialData';
 import { sha256Hex, encryptAESGCM, decryptAESGCM } from './crypto';
+import { getAdminToken } from './api';
 
 export const DEFAULT_POWER_RANGES = ['1kW - 3kW', '3kW - 6kW', '6kW - 12kW', '12kW - 30kW', '30kW+'];
 
@@ -1721,19 +1722,44 @@ export function hydrateLocalStorageFromConfig(config: FullAppConfigurationBackup
   }
 }
 
+// Real-time broadcast channel across open tabs and windows
+let syncChannel: BroadcastChannel | null = null;
+try {
+  if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+    syncChannel = new BroadcastChannel('nk_laser_realtime_sync');
+  }
+} catch {}
+
+/**
+ * Notifies local DOM listeners and all other open tabs in real-time
+ */
+export function notifyRealtimeSync(timestamp: string): void {
+  try {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('nk_laser_config_published', { detail: timestamp }));
+      syncChannel?.postMessage({ type: 'NK_CONFIG_SYNC', timestamp });
+    }
+  } catch {}
+}
+
 /**
  * Push current local configuration to the server backend for persistent preservation
  */
 export async function pushConfigurationToServer(config?: FullAppConfigurationBackup): Promise<boolean> {
   try {
     const payload = config || exportFullConfiguration();
+    const token = getAdminToken();
     const headers: Record<string, string> = { 
       'Content-Type': 'application/json',
       'Cache-Control': 'no-cache, no-store'
     };
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
     const res = await fetch('/api/admin/publish', {
       method: 'POST',
-      credentials: 'same-origin',
+      credentials: 'include',
       headers,
       body: JSON.stringify(payload)
     });
@@ -1741,6 +1767,7 @@ export async function pushConfigurationToServer(config?: FullAppConfigurationBac
       const data = await res.json().catch(() => ({}));
       const syncTime = data.publishedAt || new Date().toISOString();
       localStorage.setItem(KEYS.LAST_SYNC, syncTime);
+      notifyRealtimeSync(syncTime);
       return true;
     }
     return false;
@@ -1760,13 +1787,18 @@ export async function publishConfigurationEverywhere(config?: FullAppConfigurati
 }> {
   try {
     const payload = config || exportFullConfiguration();
+    const token = getAdminToken();
     const headers: Record<string, string> = { 
       'Content-Type': 'application/json',
       'Cache-Control': 'no-cache, no-store'
     };
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
     const res = await fetch('/api/admin/publish', {
       method: 'POST',
-      credentials: 'same-origin',
+      credentials: 'include',
       headers,
       body: JSON.stringify(payload)
     });
@@ -1776,13 +1808,15 @@ export async function publishConfigurationEverywhere(config?: FullAppConfigurati
       const publishedAt = data.publishedAt || new Date().toISOString();
       localStorage.setItem(KEYS.LAST_SYNC, publishedAt);
       saveConfigurationSnapshot('Published to all devices');
+      notifyRealtimeSync(publishedAt);
       return {
         success: true,
-        message: 'All admin changes published live to all devices!',
+        message: 'All admin changes published live to all devices and Cloudflare D1!',
         publishedAt
       };
     }
-    return { success: false, message: 'Server responded with an error during publish.' };
+    const errData = await res.json().catch(() => ({}));
+    return { success: false, message: errData.error || 'Server responded with an error during publish.' };
   } catch (err: any) {
     console.error('Error publishing configuration to server:', err);
     return { success: false, message: err.message || 'Could not connect to server to publish.' };

@@ -23,7 +23,8 @@ import {
   ThemeMode, 
   PageView, 
   ProductCategoryDef,
-  AdminTabType
+  AdminTabType,
+  FullAppConfigurationBackup
 } from './types';
 import { 
   loadSiteSettings, 
@@ -101,6 +102,19 @@ export default function App() {
   useEffect(() => {
     applyThemeToDocument('light', DEFAULT_PRIMARY_COLOR, DEFAULT_ACCENT_COLOR);
     
+    let lastKnownVersion = localStorage.getItem('nklaser_last_server_sync') || '';
+
+    const applyConfigurationState = (config: FullAppConfigurationBackup) => {
+      if (config.settings) setSettings(config.settings);
+      if (config.categories && config.categories.length > 0) setCategories(config.categories);
+      if (config.powerRanges && config.powerRanges.length > 0) setPowerRanges(config.powerRanges);
+      if (config.products && config.products.length > 0) setProducts(config.products);
+      if (config.brands && config.brands.length > 0) setBrands(config.brands);
+      if (config.reviews && config.reviews.length > 0) setReviews(config.reviews);
+      setInquiries(loadInquiries());
+      applyParsedUrlState(window.location.search, window.location.hash, config.products || [], config.categories || []);
+    };
+
     const refreshStateFromStorage = async () => {
       // First load instant cached state
       const s = loadSiteSettings();
@@ -147,20 +161,63 @@ export default function App() {
     // Immediate background sync with authoritative server configuration
     syncConfigurationWithServer().then((res) => {
       if (res.success && res.data) {
-        refreshStateFromStorage();
+        if (res.lastPublishedAt) lastKnownVersion = res.lastPublishedAt;
+        applyConfigurationState(res.data);
       }
     }).catch(() => {});
+
+    // Poller for real-time live synchronization across all devices & browsers
+    const checkLiveVersion = async () => {
+      try {
+        const res = await fetch(`/api/version?_t=${Date.now()}`, {
+          cache: 'no-store',
+          headers: { 'Cache-Control': 'no-cache' }
+        });
+        if (!res.ok) return;
+        const data = await res.json().catch(() => null);
+        if (data && data.success && data.lastPublishedAt) {
+          if (!lastKnownVersion || data.lastPublishedAt !== lastKnownVersion) {
+            lastKnownVersion = data.lastPublishedAt;
+            const syncRes = await syncConfigurationWithServer();
+            if (syncRes.success && syncRes.data) {
+              applyConfigurationState(syncRes.data);
+            }
+          }
+        }
+      } catch {
+        // Silently ignore temporary network glitches
+      }
+    };
+
+    // Auto-poll every 12 seconds when the user has the page open
+    const livePollInterval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        checkLiveVersion();
+      }
+    }, 12000);
 
     // Listen for tab focus/visibility to automatically pull latest published changes without manual refresh
     const handleVisibilityOrFocus = () => {
       if (document.visibilityState === 'visible') {
-        syncConfigurationWithServer().then((res) => {
-          if (res.success && res.data) {
-            refreshStateFromStorage();
-          }
-        }).catch(() => {});
+        checkLiveVersion();
       }
     };
+
+    // Instant local custom event listener
+    const handleConfigPublished = () => {
+      checkLiveVersion();
+    };
+
+    // Cross-tab broadcast channel for instantaneous 0ms update across tabs in same browser
+    let broadcast: BroadcastChannel | null = null;
+    try {
+      if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+        broadcast = new BroadcastChannel('nk_laser_realtime_sync');
+        broadcast.onmessage = () => {
+          checkLiveVersion();
+        };
+      }
+    } catch {}
 
     // Cross-tab storage change synchronization
     const handleStorageChange = (e: StorageEvent) => {
@@ -177,12 +234,16 @@ export default function App() {
     window.addEventListener('focus', handleVisibilityOrFocus);
     document.addEventListener('visibilitychange', handleVisibilityOrFocus);
     window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('nk_laser_config_published', handleConfigPublished);
     window.addEventListener('nk_laser_inquiries_updated', handleInquiriesUpdated);
 
     return () => {
+      clearInterval(livePollInterval);
+      broadcast?.close();
       window.removeEventListener('focus', handleVisibilityOrFocus);
       document.removeEventListener('visibilitychange', handleVisibilityOrFocus);
       window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('nk_laser_config_published', handleConfigPublished);
       window.removeEventListener('nk_laser_inquiries_updated', handleInquiriesUpdated);
     };
   }, []);
