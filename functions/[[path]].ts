@@ -6,7 +6,7 @@
  */
 
 import { BOT_UA_REGEX } from '../server-seo';
-import { INITIAL_PRODUCTS, STORE_CATEGORIES, DEFAULT_SITE_SETTINGS } from '../src/data/initialData';
+import { INITIAL_PRODUCTS, STORE_CATEGORIES, DEFAULT_SITE_SETTINGS } from '../server/seedData';
 import { slugify, getProductSlug, findProductBySlug, findCategoryBySlug, SITE_FAQS, generateSchemaGraph } from '../src/utils/seo';
 
 interface PagesContext {

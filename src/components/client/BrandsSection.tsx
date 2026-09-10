@@ -1,7 +1,6 @@
 import React from 'react';
 import { ShieldCheck, ChevronRight } from 'lucide-react';
 import { SiteSettings, BrandItem } from '../../types';
-import { INITIAL_BRANDS } from '../../data/brandsData';
 
 interface BrandsSectionProps {
   settings: SiteSettings;
@@ -14,7 +13,9 @@ export const BrandsSection: React.FC<BrandsSectionProps> = ({
   brands,
   onOpenBrand
 }) => {
-  const activeBrands = (brands && brands.length > 0) ? brands : INITIAL_BRANDS;
+  const activeBrands = brands || [];
+
+  if (activeBrands.length === 0) return null;
 
   return (
     <section className="py-8 lg:py-12 border-b border-[var(--border)] bg-[var(--background)] transition-colors duration-300">

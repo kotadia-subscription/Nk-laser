@@ -18,7 +18,6 @@ import {
   ChevronRight
 } from 'lucide-react';
 import { SiteSettings, ProductCategoryDef } from '../../types';
-import { STORE_CATEGORIES } from '../../data/categoriesData';
 
 interface CategoryHubProps {
   settings: SiteSettings;
@@ -33,7 +32,7 @@ export const CategoryHub: React.FC<CategoryHubProps> = ({
   onOpenStoreWithCategory,
   onNavigatePage
 }) => {
-  const allCategories = categories && categories.length > 0 ? categories : STORE_CATEGORIES;
+  const allCategories = categories || [];
   
   // Filter only categories enabled for display on home page by the admin
   const homeCategories = allCategories.filter(c => c.showOnHome !== false);

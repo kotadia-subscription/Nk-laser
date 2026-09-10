@@ -1,15 +1,9 @@
 /**
- * NK LASER - Centralized Data Repository
- * 
- * All website products, services, categories, brands, images, and company settings
- * are modularized here for structured storage and easy modifications.
+ * NK LASER - Static Assets & Technical Specification Data
+ * Dynamic entities (products, categories, brands, reviews, settings) are managed
+ * exclusively via the authoritative database (Cloudflare D1 & Express backend).
  */
 
 export * from './siteImages';
-export * from './settingsData';
-export * from './categoriesData';
-export * from './productsData';
-export * from './servicesData';
-export * from './brandsData';
 export * from './materialsData';
-export * from './reviewsData';
+
