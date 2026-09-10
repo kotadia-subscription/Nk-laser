@@ -683,7 +683,11 @@ export async function onRequest(context: PagesContext): Promise<Response> {
   if (pathname.startsWith('/api/products/') && method === 'GET') {
     const identifier = decodeURIComponent(pathname.replace('/api/products/', '')).toLowerCase();
     const config = await loadFullConfig(env);
-    const product = config.products.find(p => p.id.toLowerCase() === identifier || p.sku.toLowerCase() === identifier);
+    const product = config.products.find(p => 
+      p.id.toLowerCase() === identifier || 
+      (p.sku && p.sku.toLowerCase() === identifier) ||
+      (p.guid && p.guid.toLowerCase() === identifier)
+    );
 
     if (!product) {
       return jsonResponse({ success: false, error: 'Product not found' }, 404);
@@ -877,9 +881,10 @@ export async function onRequest(context: PagesContext): Promise<Response> {
       const newProduct: ProductItem = {
         ...prod,
         id: prod.id || ('prod-' + Date.now().toString(36)),
+        guid: prod.guid || crypto.randomUUID(),
         sku: prod.sku || `NK-${Math.floor(1000 + Math.random() * 9000)}`
       };
-      logCloudflare('D1_INSERT', `Admin creating new product in D1: SKU="${newProduct.sku}", Title="${newProduct.title}", ID="${newProduct.id}"`);
+      logCloudflare('D1_INSERT', `Admin creating new product in D1: SKU="${newProduct.sku}", Title="${newProduct.title}", ID="${newProduct.id}", GUID="${newProduct.guid}"`);
       const updatedProducts = [newProduct, ...config.products];
       await saveFullConfig(env, { ...config, products: updatedProducts });
       logCloudflare('D1_INSERT', `Product SKU="${newProduct.sku}" successfully saved to Cloudflare D1.`);
@@ -892,9 +897,19 @@ export async function onRequest(context: PagesContext): Promise<Response> {
       const updates = await request.json().catch(() => ({})) as Partial<ProductItem>;
       logCloudflare('D1_UPDATE', `Admin updating product ID="${id}" in D1. Fields: ${Object.keys(updates).join(', ')}`);
       const config = await loadFullConfig(env);
-      const updatedProducts = config.products.map(p => p.id === id ? { ...p, ...updates } : p);
+      const updatedProducts = config.products.map(p => {
+        if (p.id === id || p.guid === id) {
+          return {
+            ...p,
+            ...updates,
+            id: p.id,
+            guid: p.guid || updates.guid || crypto.randomUUID()
+          };
+        }
+        return p;
+      });
       await saveFullConfig(env, { ...config, products: updatedProducts });
-      const target = updatedProducts.find(p => p.id === id);
+      const target = updatedProducts.find(p => p.id === id || p.guid === id);
       logCloudflare('D1_UPDATE', `Product ID="${id}" updated successfully in Cloudflare D1.`);
       return jsonResponse({ success: true, product: target });
     }
@@ -904,7 +919,7 @@ export async function onRequest(context: PagesContext): Promise<Response> {
       const id = pathname.replace('/api/admin/products/', '');
       logCloudflare('D1_DELETE', `Admin deleting product ID="${id}" from D1.`);
       const config = await loadFullConfig(env);
-      const updatedProducts = config.products.filter(p => p.id !== id);
+      const updatedProducts = config.products.filter(p => p.id !== id && p.guid !== id);
       await saveFullConfig(env, { ...config, products: updatedProducts });
       logCloudflare('D1_DELETE', `Product ID="${id}" deleted successfully from Cloudflare D1.`);
       return jsonResponse({ success: true, message: 'Product deleted' });

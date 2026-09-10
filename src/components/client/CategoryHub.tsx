@@ -12,6 +12,7 @@ import {
   Radio,
   Layers, 
   Grid,
+  Activity,
   ArrowRight,
   Sparkles,
   ShoppingBag,
@@ -38,7 +39,7 @@ export const CategoryHub: React.FC<CategoryHubProps> = ({
   const homeCategories = allCategories.filter(c => c.showOnHome !== false);
 
   const iconMap: Record<string, any> = {
-    Shield, Disc, CircleDot, Eye, Zap, Cpu, Flame, Sliders, Radio, Layers, Grid
+    Shield, Disc, CircleDot, Eye, Zap, Cpu, Flame, Sliders, Radio, Layers, Grid, Activity
   };
 
   const getIcon = (name?: string) => {

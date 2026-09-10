@@ -12,7 +12,6 @@ import { ProductItem, ProductCategoryDef, BrandItem, ReviewItem, InquiryRecord, 
 import { isBotRequest, renderBotPage, generateSitemapXml } from './server-seo';
 
 const PORT = 3000;
-const DB_FILE_PATH = path.join(process.cwd(), 'app-config.json');
 
 // Bcrypt Configuration (Cost Factor 12)
 const BCRYPT_ROUNDS = 12;
@@ -192,65 +191,12 @@ let db: DatabaseStore = {
   lastPublishedAt: new Date().toISOString()
 };
 
-// Load persisted DB from disk if present
-function loadDatabaseFromDisk(): void {
-  try {
-    if (fs.existsSync(DB_FILE_PATH)) {
-      const data = fs.readFileSync(DB_FILE_PATH, 'utf-8');
-      const parsed = JSON.parse(data);
-      if (parsed && typeof parsed === 'object') {
-        db = {
-          ...db,
-          ...parsed,
-          settings: { ...DEFAULT_SITE_SETTINGS, ...(parsed.settings || {}) },
-          products: Array.isArray(parsed.products) && parsed.products.length > 0 ? parsed.products : INITIAL_PRODUCTS,
-          categories: Array.isArray(parsed.categories) && parsed.categories.length > 0 ? parsed.categories : STORE_CATEGORIES,
-          brands: Array.isArray(parsed.brands) && parsed.brands.length > 0 ? parsed.brands : INITIAL_BRANDS,
-          reviews: Array.isArray(parsed.reviews) && parsed.reviews.length >= INITIAL_REVIEWS.length ? parsed.reviews : INITIAL_REVIEWS,
-          inquiries: Array.isArray(parsed.inquiries) ? parsed.inquiries : db.inquiries,
-          powerRanges: Array.isArray(parsed.powerRanges) ? parsed.powerRanges : db.powerRanges,
-          adminPasswordHash: (parsed.adminPasswordHash && String(parsed.adminPasswordHash).startsWith('$2'))
-            ? parsed.adminPasswordHash
-            : DEFAULT_ADMIN_HASH
-        };
-
-        // If the disk stored the old non-bcrypt hash, automatically upgrade it
-        if (!parsed.adminPasswordHash || !String(parsed.adminPasswordHash).startsWith('$2')) {
-          persistDatabaseToDisk();
-          console.log('[Security] Upgraded legacy password hash to bcrypt (12 rounds) on persistent disk');
-        }
-
-        console.log(`[DB] Successfully loaded database from ${DB_FILE_PATH} (${db.products.length} products, ${db.categories.length} categories)`);
-      }
-    } else {
-      // First boot: write initial seed to disk
-      persistDatabaseToDisk();
-      console.log(`[DB] Initialized new database at ${DB_FILE_PATH}`);
-    }
-  } catch (err) {
-    console.error('[DB] Error loading database from disk, using in-memory defaults:', err);
-  }
-}
-
-// Persist DB to disk
+// In-memory runtime persistence
+// Note: Dynamic catalog state is maintained authoritatively in memory (dev/container) and Cloudflare D1 (production).
+// app-config.json is not used for catalog storage.
 function persistDatabaseToDisk(): void {
-  try {
-    const backupData = {
-      version: db.version,
-      lastPublishedAt: db.lastPublishedAt,
-      settings: db.settings,
-      products: db.products,
-      categories: db.categories,
-      brands: db.brands,
-      reviews: db.reviews,
-      inquiries: db.inquiries,
-      powerRanges: db.powerRanges,
-      adminPasswordHash: db.adminPasswordHash
-    };
-    fs.writeFileSync(DB_FILE_PATH, JSON.stringify(backupData, null, 2), 'utf-8');
-  } catch (err) {
-    console.warn('[DB] Warning: Could not write to disk (read-only filesystem or permission):', err);
-  }
+  // Authoritative runtime store updated in memory
+  db.lastPublishedAt = new Date().toISOString();
 }
 
 // Authentication Middleware to Protect Admin Endpoints
@@ -313,9 +259,6 @@ async function startServer() {
 
   // Strip x-powered-by header
   app.disable('x-powered-by');
-
-  // Load database immediately
-  loadDatabaseFromDisk();
 
   // Middlewares: Cookie Parser and Body Parser
   app.use(cookieParser());
@@ -469,7 +412,11 @@ async function startServer() {
   // Single Product Detail by ID or SKU
   app.get('/api/products/:identifier', (req, res) => {
     const idOrSku = req.params.identifier.toLowerCase();
-    const product = db.products.find(p => p.id.toLowerCase() === idOrSku || p.sku.toLowerCase() === idOrSku);
+    const product = db.products.find(p => 
+      p.id.toLowerCase() === idOrSku || 
+      (p.sku && p.sku.toLowerCase() === idOrSku) ||
+      (p.guid && p.guid.toLowerCase() === idOrSku)
+    );
 
     if (!product) {
       return res.status(404).json({ success: false, error: 'Product not found' });
@@ -855,6 +802,7 @@ async function startServer() {
     const newProduct: ProductItem = {
       ...p,
       id: p.id ? sanitizeString(p.id, 80) : ('prod-' + Date.now().toString(36)),
+      guid: p.guid ? sanitizeString(p.guid, 80) : crypto.randomUUID(),
       title,
       sku,
       categorySlug: sanitizeString(p.categorySlug, 100) || 'optics-lenses',
@@ -875,7 +823,7 @@ async function startServer() {
   // Update Product
   app.put('/api/admin/products/:id', requireAdminAuth, (req, res) => {
     const id = req.params.id;
-    const idx = db.products.findIndex(p => p.id === id);
+    const idx = db.products.findIndex(p => p.id === id || p.guid === id);
 
     if (idx === -1) {
       return res.status(404).json({ success: false, error: 'Product not found' });
@@ -886,9 +834,11 @@ async function startServer() {
       return res.status(400).json({ success: false, error: 'Invalid product image URL scheme' });
     }
 
+    const targetProduct = db.products[idx];
     const sanitizedUpdates: Partial<ProductItem> = {
       ...p,
-      id // retain immutable id
+      id: targetProduct.id, // retain immutable id
+      guid: targetProduct.guid || p.guid || crypto.randomUUID()
     };
     if (p.title) sanitizedUpdates.title = sanitizeString(p.title, 200);
     if (p.sku) sanitizedUpdates.sku = sanitizeString(p.sku, 80);
@@ -897,7 +847,7 @@ async function startServer() {
     if (p.description) sanitizedUpdates.description = sanitizeString(p.description, 2000);
     if (p.estimatedPrice !== undefined) sanitizedUpdates.estimatedPrice = Math.max(0, Number(p.estimatedPrice) || 0);
 
-    db.products[idx] = { ...db.products[idx], ...sanitizedUpdates };
+    db.products[idx] = { ...targetProduct, ...sanitizedUpdates };
     persistDatabaseToDisk();
     res.json({ success: true, product: db.products[idx] });
   });
@@ -906,7 +856,7 @@ async function startServer() {
   app.delete('/api/admin/products/:id', requireAdminAuth, (req, res) => {
     const id = req.params.id;
     const initialLen = db.products.length;
-    db.products = db.products.filter(p => p.id !== id);
+    db.products = db.products.filter(p => p.id !== id && p.guid !== id);
 
     if (db.products.length === initialLen) {
       return res.status(404).json({ success: false, error: 'Product not found' });

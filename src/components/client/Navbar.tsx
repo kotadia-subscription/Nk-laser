@@ -67,9 +67,35 @@ export const Navbar: React.FC<NavbarProps> = ({
   const cleanNumber = (settings.whatsappNumber || '+919902035374').replace(/[^0-9]/g, '');
 
   const availableCategories = categories.length > 0 ? categories : [
-    { id: 'cat-spares', slug: 'laser-spares-consumables', name: 'Laser Spares/Consumables', iconName: 'Flame', description: 'Protective Windows, Cutting Nozzles, Ceramic Sensor Rings' },
-    { id: 'cat-source', slug: 'laser-source', name: 'Laser Source', iconName: 'Zap', description: 'Max, Raycus, IPG Photonics, JPT' },
-    { id: 'cat-chillers', slug: 'laser-chillers', name: 'Laser Chillers', iconName: 'Activity', description: 'Hanli, S&A, Hexacool' }
+    { 
+      id: 'cat-laser-spares-consumables', 
+      slug: 'laser-spares-consumables', 
+      name: 'Laser Spares/Consumables', 
+      iconName: 'Flame', 
+      description: 'Protective lens, Nozzles, Ceramic rings, Collimation & Focus lens, Sensors, RF cables',
+      subCategories: [
+        'Protective lens', 'Nozzles', 'Ceramic ring', 'Collimation & Focus lens', 'Sensor head TRA',
+        'RF cable', 'Amplifier', 'QBH protection cap', 'Remote', 'Smc valve', 'Seal ring',
+        'Cleaning consumbles', 'Ceramic locking Ring', 'Nozzle visual aligner', 'Welding reflector mirror',
+        'Fiber cable', 'Bodor consumbles', 'Cutting head & controller', 'Welding controller'
+      ]
+    },
+    { 
+      id: 'cat-laser-source', 
+      slug: 'laser-source', 
+      name: 'Laser Source', 
+      iconName: 'Zap', 
+      description: 'Max, Raycus CW fiber laser sources',
+      subCategories: ['Max', 'Raycus']
+    },
+    { 
+      id: 'cat-laser-chiller', 
+      slug: 'laser-chiller', 
+      name: 'Laser Chiller', 
+      iconName: 'Activity', 
+      description: 'Hanli, S&a, Hexacool dual temperature chillers',
+      subCategories: ['Hanli', 'S&a', 'Hexacool']
+    }
   ];
 
   // Categories for the spare parts catalog popup

@@ -116,7 +116,10 @@ export const ProductEditModal: React.FC<ProductEditModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSave(formData);
+    onSave({
+      ...formData,
+      guid: formData.guid || (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : ('guid-' + Date.now().toString(36) + Math.random().toString(36).substring(2, 9)))
+    });
   };
 
   return (
