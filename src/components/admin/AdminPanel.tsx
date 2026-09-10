@@ -47,7 +47,8 @@ import {
   runAutoBrandAudit,
   KNOWN_THIRD_PARTY_BRANDS,
   publishConfigurationEverywhere,
-  pushConfigurationToServer
+  pushConfigurationToServer,
+  syncConfigurationWithServer
 } from '../../utils/storage';
 import {
   adminLogin,
@@ -176,7 +177,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     }
   }, []);
 
-  // Verify server session on modal open & load fresh inquiries and reviews
+  // Verify server session on modal open & load fresh inquiries, reviews, and catalog data
   useEffect(() => {
     if (isOpen) {
       loadFreshReviews();
@@ -188,6 +189,17 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           setIsAuthenticated(false);
         }
       });
+      // Fetch authoritative live configuration from server/D1 database
+      syncConfigurationWithServer().then((res) => {
+        if (res.success && res.data) {
+          if (res.data.settings) setSettings(res.data.settings);
+          if (res.data.products) setProducts(res.data.products);
+          if (res.data.categories) setCategories(res.data.categories);
+          if (res.data.brands) setBrands(res.data.brands);
+          if (res.data.powerRanges) setPowerRanges(res.data.powerRanges);
+          if (res.data.reviews) setReviews(res.data.reviews);
+        }
+      }).catch(() => {});
     }
   }, [isOpen, loadFreshInquiries, loadFreshReviews]);
 

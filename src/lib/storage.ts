@@ -1,6 +1,7 @@
 import { SiteSettings, ServiceItem, ProductItem, InquiryRecord, BrandAuditItem, ReviewItem, BrandItem, ProductCategoryDef, FullAppConfigurationBackup, ConfigSnapshot, BusinessAddress } from '../types';
 import { sha256Hex, encryptAESGCM, decryptAESGCM } from './crypto';
 import { getAdminToken } from './api';
+import { setActiveAdminSecretKey } from '../utils/navigation';
 
 export const DEFAULT_POWER_RANGES = ['1kW - 3kW', '3kW - 6kW', '6kW - 12kW', '12kW - 30kW', '30kW+'];
 
@@ -91,10 +92,36 @@ const safeStorage = {
   }
 };
 
-// Purge any legacy plaintext credentials immediately to protect from web inspection
-safeStorage.removeItem('nklaser_admin_password');
-safeStorage.removeItem('nk_laser_admin_pwd');
+// Wipe all legacy and stale client-side caches so the app is always 100% authoritative from backend/D1 database
+if (typeof window !== 'undefined') {
+  try {
+    const keysToPurge = [
+      'nklaser_products_v5', 'nklaser_products_v4', 'nklaser_products_v3', 'nklaser_products',
+      'nklaser_categories_v5', 'nklaser_categories',
+      'nklaser_brands', 'nklaser_reviews', 'nklaser_power_ranges',
+      'nklaser_site_settings_v3', 'nklaser_site_settings_v2', 'nklaser_site_settings',
+      'nklaser_inquiries', 'nklaser_services', 'nklaser_brand_audit',
+      'nklaser_admin_password', 'nk_laser_admin_pwd', 'nklaser_last_server_sync',
+      'nklaser_config_snapshots_v1'
+    ];
+    for (const k of keysToPurge) {
+      localStorage.removeItem(k);
+    }
+  } catch {}
+}
 
+// In-memory single-source-of-truth state caches (zero localStorage reliance for live dynamic data)
+let memorySiteSettings: SiteSettings = { ...DEFAULT_SITE_SETTINGS };
+let memoryProducts: ProductItem[] = [];
+let memoryCategories: ProductCategoryDef[] = [];
+let memoryBrands: BrandItem[] = [];
+let memoryPowerRanges: string[] = [...DEFAULT_POWER_RANGES];
+let memoryReviews: ReviewItem[] = [];
+let memoryInquiries: InquiryRecord[] = [];
+let memoryServices: ServiceItem[] = [];
+let memoryAuditItems: BrandAuditItem[] = [];
+let memorySnapshots: ConfigSnapshot[] = [];
+let memoryLastSync: string | null = null;
 
 // Initial brand audit state checking for non-NKL external branding in non-product content
 export const INITIAL_AUDIT_ITEMS: BrandAuditItem[] = [
@@ -121,46 +148,21 @@ export const INITIAL_AUDIT_ITEMS: BrandAuditItem[] = [
 export const INITIAL_INQUIRIES: InquiryRecord[] = [];
 
 export function loadReviews(): ReviewItem[] {
-  try {
-    const saved = safeStorage.getItem(KEYS.REVIEWS);
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed;
-      }
-    }
-  } catch (e) {
-    console.error('Error loading reviews:', e);
-  }
-  return [];
+  return memoryReviews;
 }
 
 export function saveReviews(reviews: ReviewItem[]): void {
-  try {
-    safeStorage.setItem(KEYS.REVIEWS, JSON.stringify(reviews));
-    pushConfigurationToServer().catch(() => {});
-  } catch (e) {
-    console.error('Error saving reviews:', e);
-  }
+  memoryReviews = reviews;
+  pushConfigurationToServer().catch(() => {});
 }
 
 export function loadBrands(): BrandItem[] {
-  try {
-    const saved = safeStorage.getItem(KEYS.BRANDS);
-    if (saved) return JSON.parse(saved);
-  } catch (e) {
-    console.error('Error loading brands:', e);
-  }
-  return [];
+  return memoryBrands;
 }
 
 export function saveBrands(brands: BrandItem[]): void {
-  try {
-    safeStorage.setItem(KEYS.BRANDS, JSON.stringify(brands));
-    pushConfigurationToServer().catch(() => {});
-  } catch (e) {
-    console.error('Error saving brands:', e);
-  }
+  memoryBrands = brands;
+  pushConfigurationToServer().catch(() => {});
 }
 
 
@@ -221,240 +223,105 @@ function sanitizeCodText(text?: string): string | undefined {
     .trim();
 }
 
-let cachedSiteSettings: SiteSettings | null = null;
-
 export function invalidateSettingsCache(): void {
-  cachedSiteSettings = null;
+  // in-memory single-source-of-truth
 }
 
 export function loadSiteSettings(): SiteSettings {
-  if (cachedSiteSettings) {
-    return cachedSiteSettings;
-  }
+  return memorySiteSettings;
+}
 
-  try {
-    const saved = safeStorage.getItem(KEYS.SETTINGS);
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      const addresses = normalizeAddresses(parsed.addresses, parsed.address);
-      const primaryAddr = addresses.find(a => a.isPrimary) || addresses[0];
-      const result: SiteSettings = {
-        ...DEFAULT_SITE_SETTINGS,
-        ...parsed,
-        heroSubtitle: sanitizeCodText(parsed.heroSubtitle) || DEFAULT_SITE_SETTINGS.heroSubtitle,
-        noticeBannerText: sanitizeCodText(parsed.noticeBannerText) || DEFAULT_SITE_SETTINGS.noticeBannerText,
-        address: primaryAddr?.addressLine || parsed.address || DEFAULT_SITE_SETTINGS.address,
-        addresses: addresses,
-        instagramUrl: parsed.instagramUrl || parsed.socialLinks?.instagram || DEFAULT_SITE_SETTINGS.instagramUrl,
-        socialLinks: {
-          ...DEFAULT_SITE_SETTINGS.socialLinks,
-          ...(parsed.socialLinks || {}),
-          instagram: parsed.instagramUrl || parsed.socialLinks?.instagram || DEFAULT_SITE_SETTINGS.instagramUrl
-        },
-        themeMode: 'light',
-        primaryColor: '#162657',
-        accentColor: '#E51024',
-        sectionsVisibility: {
-          ...DEFAULT_SITE_SETTINGS.sectionsVisibility,
-          ...(parsed.sectionsVisibility || {})
-        }
-      };
-      cachedSiteSettings = result;
-      return result;
-    }
-
-    // Migration fallback from v1
-    const savedV1 = safeStorage.getItem(KEYS.SETTINGS_V1);
-    if (savedV1) {
-      const parsedV1 = JSON.parse(savedV1);
-      const addresses = normalizeAddresses(parsedV1.addresses, parsedV1.address);
-      const primaryAddr = addresses.find(a => a.isPrimary) || addresses[0];
-      const migrated: SiteSettings = {
-        ...DEFAULT_SITE_SETTINGS,
-        ...parsedV1,
-        heroSubtitle: sanitizeCodText(parsedV1.heroSubtitle) || DEFAULT_SITE_SETTINGS.heroSubtitle,
-        noticeBannerText: sanitizeCodText(parsedV1.noticeBannerText) || DEFAULT_SITE_SETTINGS.noticeBannerText,
-        address: primaryAddr?.addressLine || parsedV1.address || DEFAULT_SITE_SETTINGS.address,
-        addresses: addresses,
-        instagramUrl: parsedV1.instagramUrl || parsedV1.socialLinks?.instagram || DEFAULT_SITE_SETTINGS.instagramUrl,
-        socialLinks: {
-          ...DEFAULT_SITE_SETTINGS.socialLinks,
-          ...(parsedV1.socialLinks || {}),
-          instagram: parsedV1.instagramUrl || parsedV1.socialLinks?.instagram || DEFAULT_SITE_SETTINGS.instagramUrl
-        },
-        themeMode: 'light',
-        primaryColor: '#162657',
-        accentColor: '#E51024',
-        sectionsVisibility: {
-          ...DEFAULT_SITE_SETTINGS.sectionsVisibility,
-          ...(parsedV1.sectionsVisibility || {}),
-          quoteCalculator: false
-        }
-      };
-      saveSiteSettings(migrated);
-      cachedSiteSettings = migrated;
-      return migrated;
-    }
-  } catch (e) {
-    console.error('Error loading site settings:', e);
-  }
-
-  const fallback: SiteSettings = {
+export function saveSiteSettings(settings: SiteSettings): void {
+  const addresses = normalizeAddresses(settings.addresses, settings.address);
+  const primaryAddr = addresses.find(a => a.isPrimary) || addresses[0];
+  const normalized: SiteSettings = {
     ...DEFAULT_SITE_SETTINGS,
+    ...settings,
+    heroSubtitle: sanitizeCodText(settings.heroSubtitle) || DEFAULT_SITE_SETTINGS.heroSubtitle,
+    noticeBannerText: sanitizeCodText(settings.noticeBannerText) || DEFAULT_SITE_SETTINGS.noticeBannerText,
+    address: primaryAddr?.addressLine || settings.address || DEFAULT_SITE_SETTINGS.address,
+    addresses,
     themeMode: 'light',
     primaryColor: '#162657',
     accentColor: '#E51024'
   };
-  cachedSiteSettings = fallback;
-  return fallback;
-}
-
-export function saveSiteSettings(settings: SiteSettings): void {
-  try {
-    const normalized: SiteSettings = {
-      ...settings,
-      themeMode: 'light',
-      primaryColor: '#162657',
-      accentColor: '#E51024'
-    };
-    cachedSiteSettings = normalized;
-    safeStorage.setItem(KEYS.SETTINGS, JSON.stringify(normalized));
-    pushConfigurationToServer().catch(() => {});
-  } catch (e) {
-    console.error('Error saving site settings:', e);
+  memorySiteSettings = normalized;
+  if (normalized.adminSecretKey) {
+    setActiveAdminSecretKey(normalized.adminSecretKey);
   }
+  pushConfigurationToServer().catch(() => {});
 }
 
 
 export function loadServices(): ServiceItem[] {
-  try {
-    const saved = safeStorage.getItem(KEYS.SERVICES);
-    if (saved) return JSON.parse(saved);
-  } catch (e) {
-    console.error('Error loading services:', e);
-  }
-  return [];
+  return memoryServices;
 }
 
 export function saveServices(services: ServiceItem[]): void {
-  try {
-    safeStorage.setItem(KEYS.SERVICES, JSON.stringify(services));
-  } catch (e) {
-    console.error('Error saving services:', e);
-  }
+  memoryServices = services;
 }
 
 export function loadProducts(): ProductItem[] {
-  try {
-    const saved = safeStorage.getItem(KEYS.PRODUCTS);
-    if (saved) {
-      return JSON.parse(saved);
-    }
-  } catch (e) {
-    console.error('Error loading products:', e);
-  }
-  return [];
+  return memoryProducts;
 }
 
 export function saveProducts(products: ProductItem[]): void {
-  try {
-    safeStorage.setItem(KEYS.PRODUCTS, JSON.stringify(products));
-    pushConfigurationToServer().catch(() => {});
-  } catch (e) {
-    console.error('Error saving products:', e);
-  }
+  memoryProducts = products;
+  pushConfigurationToServer().catch(() => {});
 }
 
 
 export function loadInquiries(): InquiryRecord[] {
-  try {
-    const saved = safeStorage.getItem(KEYS.INQUIRIES);
-    if (saved) return JSON.parse(saved);
-  } catch (e) {
-    console.error('Error loading inquiries:', e);
-  }
-  return [];
+  return memoryInquiries;
 }
 
 export function saveInquiries(inquiries: InquiryRecord[]): void {
-  try {
-    localStorage.setItem(KEYS.INQUIRIES, JSON.stringify(inquiries));
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('nk_laser_inquiries_updated', { detail: inquiries }));
-    }
-  } catch (e) {
-    console.error('Error saving inquiries:', e);
+  memoryInquiries = inquiries;
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('nk_laser_inquiries_updated', { detail: inquiries }));
   }
 }
 
 export function saveInquiry(newInquiry: Omit<InquiryRecord, 'id' | 'createdAt' | 'status'>): InquiryRecord {
-  const current = loadInquiries();
   const createdRecord: InquiryRecord = {
     ...newInquiry,
     id: 'inq-' + Math.floor(1000 + Math.random() * 9000),
     createdAt: new Date().toISOString(),
     status: 'New'
   };
-  const updated = [createdRecord, ...current];
-  try {
-    localStorage.setItem(KEYS.INQUIRIES, JSON.stringify(updated));
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('nk_laser_inquiries_updated', { detail: updated }));
-    }
-    // Send to backend server database
-    fetch('/api/inquiries', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(newInquiry)
-    }).catch(err => console.warn('Could not post inquiry to server backend:', err));
-  } catch (e) {
-    console.error('Error saving inquiry:', e);
+  memoryInquiries = [createdRecord, ...memoryInquiries];
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('nk_laser_inquiries_updated', { detail: memoryInquiries }));
   }
+  // Send to backend server database
+  fetch('/api/inquiries', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(newInquiry)
+  }).catch(err => console.warn('Could not post inquiry to server backend:', err));
   return createdRecord;
 }
 
 export function updateInquiryStatus(id: string, status: InquiryRecord['status']): void {
-  const current = loadInquiries();
-  const updated = current.map(item => item.id === id ? { ...item, status } : item);
-  try {
-    localStorage.setItem(KEYS.INQUIRIES, JSON.stringify(updated));
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('nk_laser_inquiries_updated', { detail: updated }));
-    }
-  } catch (e) {
-    console.error('Error updating inquiry status:', e);
+  memoryInquiries = memoryInquiries.map(item => item.id === id ? { ...item, status } : item);
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('nk_laser_inquiries_updated', { detail: memoryInquiries }));
   }
 }
 
 export function deleteInquiry(id: string): void {
-  const current = loadInquiries();
-  const updated = current.filter(item => item.id !== id);
-  try {
-    localStorage.setItem(KEYS.INQUIRIES, JSON.stringify(updated));
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('nk_laser_inquiries_updated', { detail: updated }));
-    }
-  } catch (e) {
-    console.error('Error deleting inquiry:', e);
+  memoryInquiries = memoryInquiries.filter(item => item.id !== id);
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('nk_laser_inquiries_updated', { detail: memoryInquiries }));
   }
 }
 
 export function loadAuditItems(): BrandAuditItem[] {
-  try {
-    const saved = safeStorage.getItem(KEYS.AUDIT);
-    if (saved) return JSON.parse(saved);
-  } catch (e) {
-    console.error('Error loading audit items:', e);
-  }
-  return INITIAL_AUDIT_ITEMS;
+  return memoryAuditItems.length > 0 ? memoryAuditItems : INITIAL_AUDIT_ITEMS;
 }
 
 export function saveAuditItems(items: BrandAuditItem[]): void {
-  try {
-    safeStorage.setItem(KEYS.AUDIT, JSON.stringify(items));
-  } catch (e) {
-    console.error('Error saving audit items:', e);
-  }
+  memoryAuditItems = items;
 }
 
 // Standard list of third-party OEM, competitor, and machinery brands to monitor
@@ -693,43 +560,21 @@ export function runAutoBrandAudit(options?: BrandAuditOptions): BrandAuditItem[]
 }
 
 export function loadCategories(): ProductCategoryDef[] {
-  try {
-    const saved = safeStorage.getItem(KEYS.CATEGORIES);
-    if (saved) {
-      return JSON.parse(saved);
-    }
-  } catch (e) {
-    console.error('Error loading categories:', e);
-  }
-  return [];
+  return memoryCategories;
 }
 
 export function saveCategories(categories: ProductCategoryDef[]): void {
-  try {
-    safeStorage.setItem(KEYS.CATEGORIES, JSON.stringify(categories));
-    pushConfigurationToServer().catch(() => {});
-  } catch (e) {
-    console.error('Error saving categories:', e);
-  }
+  memoryCategories = categories;
+  pushConfigurationToServer().catch(() => {});
 }
 
 export function loadPowerRanges(): string[] {
-  try {
-    const saved = safeStorage.getItem(KEYS.POWER_RANGES);
-    if (saved) return JSON.parse(saved);
-  } catch (e) {
-    console.error('Error loading power ranges:', e);
-  }
-  return DEFAULT_POWER_RANGES;
+  return memoryPowerRanges.length > 0 ? memoryPowerRanges : DEFAULT_POWER_RANGES;
 }
 
 export function savePowerRanges(ranges: string[]): void {
-  try {
-    safeStorage.setItem(KEYS.POWER_RANGES, JSON.stringify(ranges));
-    pushConfigurationToServer().catch(() => {});
-  } catch (e) {
-    console.error('Error saving power ranges:', e);
-  }
+  memoryPowerRanges = ranges;
+  pushConfigurationToServer().catch(() => {});
 }
 
 // Administrative authentication is strictly server-enforced via bcrypt and HttpOnly cookies.
@@ -1542,14 +1387,6 @@ export function importFullConfiguration(backupData: any): {
       savePowerRanges(backupData.powerRanges);
     }
 
-    // 8. Admin password (encrypted hash only)
-    if (backupData.adminPasswordHash && typeof backupData.adminPasswordHash === 'string') {
-      localStorage.setItem(KEYS.ADMIN_PASSWORD_HASH, backupData.adminPasswordHash.trim());
-    }
-    if (backupData.adminPasswordEncrypted && typeof backupData.adminPasswordEncrypted === 'string') {
-      localStorage.setItem(KEYS.ADMIN_PASSWORD_ENC, backupData.adminPasswordEncrypted.trim());
-    }
-
     // Sync with server in background
     pushConfigurationToServer().catch(err => console.warn('Server sync error on import:', err));
 
@@ -1565,7 +1402,7 @@ export function importFullConfiguration(backupData: any): {
 }
 
 /**
- * Hydrates client local storage directly from a server configuration object
+ * Hydrates client memory state directly from a server configuration object
  * without triggering redundant server roundtrips.
  */
 export function hydrateLocalStorageFromConfig(config: FullAppConfigurationBackup): void {
@@ -1586,41 +1423,40 @@ export function hydrateLocalStorageFromConfig(config: FullAppConfigurationBackup
         primaryColor: '#162657',
         accentColor: '#E51024'
       };
-      localStorage.setItem(KEYS.SETTINGS, JSON.stringify(normalized));
+      memorySiteSettings = normalized;
+      if (normalized.adminSecretKey) {
+        setActiveAdminSecretKey(normalized.adminSecretKey);
+      }
     }
     
-    if (Array.isArray(config.products) && config.products.length > 0) {
-      localStorage.setItem(KEYS.PRODUCTS, JSON.stringify(config.products));
+    if (Array.isArray(config.products)) {
+      memoryProducts = config.products;
     }
     
-    if (Array.isArray(config.categories) && config.categories.length > 0) {
-      localStorage.setItem(KEYS.CATEGORIES, JSON.stringify(config.categories));
+    if (Array.isArray(config.categories)) {
+      memoryCategories = config.categories;
     }
     
-    if (Array.isArray(config.brands) && config.brands.length > 0) {
-      localStorage.setItem(KEYS.BRANDS, JSON.stringify(config.brands));
+    if (Array.isArray(config.brands)) {
+      memoryBrands = config.brands;
     }
     
-    if (Array.isArray(config.reviews) && config.reviews.length > 0) {
-      localStorage.setItem(KEYS.REVIEWS, JSON.stringify(config.reviews));
+    if (Array.isArray(config.reviews)) {
+      memoryReviews = config.reviews;
     }
     
     if (Array.isArray(config.powerRanges) && config.powerRanges.length > 0) {
-      localStorage.setItem(KEYS.POWER_RANGES, JSON.stringify(config.powerRanges));
+      memoryPowerRanges = config.powerRanges;
+    }
+
+    if (Array.isArray(config.inquiries)) {
+      memoryInquiries = config.inquiries;
     }
     
-    if (config.adminPasswordHash && typeof config.adminPasswordHash === 'string') {
-      localStorage.setItem(KEYS.ADMIN_PASSWORD_HASH, config.adminPasswordHash.trim());
-    }
-    if (config.adminPasswordEncrypted && typeof config.adminPasswordEncrypted === 'string') {
-      localStorage.setItem(KEYS.ADMIN_PASSWORD_ENC, config.adminPasswordEncrypted.trim());
-    }
-    
-    if (config.exportedAt || (config as any).lastPublishedAt) {
-      localStorage.setItem(KEYS.LAST_SYNC, config.exportedAt || (config as any).lastPublishedAt);
-    }
+    const syncTime = config.exportedAt || (config as any).lastPublishedAt || new Date().toISOString();
+    memoryLastSync = syncTime;
   } catch (e) {
-    console.error('Error hydrating localStorage from config:', e);
+    console.error('Error hydrating memory from config:', e);
   }
 }
 
@@ -1668,7 +1504,7 @@ export async function pushConfigurationToServer(config?: FullAppConfigurationBac
     if (res.ok) {
       const data = await res.json().catch(() => ({}));
       const syncTime = data.publishedAt || new Date().toISOString();
-      localStorage.setItem(KEYS.LAST_SYNC, syncTime);
+      memoryLastSync = syncTime;
       notifyRealtimeSync(syncTime);
       return true;
     }
@@ -1708,7 +1544,7 @@ export async function publishConfigurationEverywhere(config?: FullAppConfigurati
     if (res.ok) {
       const data = await res.json();
       const publishedAt = data.publishedAt || new Date().toISOString();
-      localStorage.setItem(KEYS.LAST_SYNC, publishedAt);
+      memoryLastSync = publishedAt;
       saveConfigurationSnapshot('Published to all devices');
       notifyRealtimeSync(publishedAt);
       return {
@@ -1726,7 +1562,7 @@ export async function publishConfigurationEverywhere(config?: FullAppConfigurati
 }
 
 /**
- * Fetch persisted configuration from server and sync with local storage
+ * Fetch persisted configuration from server and sync with in-memory state
  */
 export async function syncConfigurationWithServer(): Promise<{ 
   success: boolean; 
@@ -1756,7 +1592,7 @@ export async function syncConfigurationWithServer(): Promise<{
       // Server is the single source of truth for all devices
       hydrateLocalStorageFromConfig(serverConfig);
       const syncTime = serverConfig.exportedAt || (serverConfig as any).lastPublishedAt || new Date().toISOString();
-      localStorage.setItem(KEYS.LAST_SYNC, syncTime);
+      memoryLastSync = syncTime;
       
       return { 
         success: true, 
@@ -1767,13 +1603,13 @@ export async function syncConfigurationWithServer(): Promise<{
     }
     return { success: false, source: 'local' };
   } catch (err) {
-    console.warn('Could not reach server API, using local storage cache:', err);
+    console.warn('Could not reach server API:', err);
     return { success: false, source: 'local' };
   }
 }
 
 /**
- * Snapshots version history in localStorage (keeps last 5 snapshots)
+ * Snapshots version history in-memory (keeps last 5 snapshots)
  */
 export function saveConfigurationSnapshot(label: string = 'Automatic Snapshot'): ConfigSnapshot {
   try {
@@ -1785,7 +1621,7 @@ export function saveConfigurationSnapshot(label: string = 'Automatic Snapshot'):
       data: exportFullConfiguration()
     };
     const updated = [newSnapshot, ...existing].slice(0, 5); // Keep last 5
-    localStorage.setItem(KEYS.SNAPSHOTS, JSON.stringify(updated));
+    memorySnapshots = updated;
     return newSnapshot;
   } catch (e) {
     console.error('Error saving configuration snapshot:', e);
@@ -1799,13 +1635,7 @@ export function saveConfigurationSnapshot(label: string = 'Automatic Snapshot'):
 }
 
 export function loadConfigurationSnapshots(): ConfigSnapshot[] {
-  try {
-    const saved = localStorage.getItem(KEYS.SNAPSHOTS);
-    if (saved) return JSON.parse(saved);
-  } catch (e) {
-    console.error('Error loading configuration snapshots:', e);
-  }
-  return [];
+  return memorySnapshots;
 }
 
 export function restoreConfigurationSnapshot(id: string): boolean {
@@ -1823,11 +1653,7 @@ export function restoreConfigurationSnapshot(id: string): boolean {
 }
 
 export function getLastServerSyncTime(): string | null {
-  try {
-    return localStorage.getItem(KEYS.LAST_SYNC);
-  } catch (e) {
-    return null;
-  }
+  return memoryLastSync;
 }
 
 

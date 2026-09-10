@@ -33,6 +33,18 @@ export interface PartialUrlState {
 
 export const DEFAULT_ADMIN_PORTAL_KEY = 'nk-vault-9921-x';
 
+let memoryAdminSecretKey = DEFAULT_ADMIN_PORTAL_KEY;
+
+export function setActiveAdminSecretKey(key: string): void {
+  if (key && typeof key === 'string' && key.trim()) {
+    memoryAdminSecretKey = key.trim().toLowerCase();
+  }
+}
+
+export function getActiveAdminSecretKey(): string {
+  return memoryAdminSecretKey;
+}
+
 /**
  * Parses URL search params, pathname, and hash into structured app state
  */
@@ -48,17 +60,7 @@ export function parseUrlState(
 
   // 1. Unpredictable Admin Portal Access:
   // Strictly ignores /admin or ?admin=true to prevent discovery by scanners, bots & HTTP trackers.
-  let activePortalKey = DEFAULT_ADMIN_PORTAL_KEY;
-  try {
-    const raw = typeof window !== 'undefined' ? localStorage.getItem('nklaser_site_settings_v3') : null;
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (parsed.adminSecretKey && typeof parsed.adminSecretKey === 'string' && parsed.adminSecretKey.trim()) {
-        activePortalKey = parsed.adminSecretKey.trim().toLowerCase();
-      }
-    }
-  } catch (e) {}
-
+  const activePortalKey = memoryAdminSecretKey;
   const vaultParam = params.get('vault') || params.get('portal_key') || params.get('secret_key');
   const isSecretPath = pathname === `/${activePortalKey}` || pathname.startsWith(`/${activePortalKey}/`);
   const isSecretParam = Boolean(vaultParam && (vaultParam.toLowerCase() === activePortalKey || vaultParam.toLowerCase() === DEFAULT_ADMIN_PORTAL_KEY));
@@ -188,17 +190,7 @@ export function buildAppUrl(state: PartialUrlState): string {
 
   // 1. Admin vault access
   if (state.isAdminOpen) {
-    let currentKey = DEFAULT_ADMIN_PORTAL_KEY;
-    try {
-      const raw = typeof window !== 'undefined' ? localStorage.getItem('nklaser_site_settings_v3') : null;
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (parsed.adminSecretKey && typeof parsed.adminSecretKey === 'string' && parsed.adminSecretKey.trim()) {
-          currentKey = parsed.adminSecretKey.trim();
-        }
-      }
-    } catch (e) {}
-
+    const currentKey = memoryAdminSecretKey || DEFAULT_ADMIN_PORTAL_KEY;
     const params = new URLSearchParams();
     params.set('vault', currentKey);
     if (state.adminTab && state.adminTab !== 'dashboard') {
