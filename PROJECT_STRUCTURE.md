@@ -52,13 +52,7 @@ The application pairs a high-conversion client-facing product catalog with a pas
     │   └── storage.ts                    # Storage bridge helper
     ├── data/
     │   ├── index.ts                      # Data exports barrel
-    │   ├── initialData.ts                # Default settings, reviews & initial state
-    │   ├── settingsData.ts               # Business defaults & contact information
-    │   ├── categoriesData.ts             # Default categories, subcategories & icon keys
-    │   ├── productsData.ts               # Seed database of fiber laser spares & specs
-    │   ├── brandsData.ts                 # Compatible OEM laser brands & models
     │   ├── materialsData.ts              # Material specs & cutting capability data
-    │   ├── servicesData.ts               # Engineering & fabrication service offerings
     │   └── siteImages.ts                 # Curated high-res asset references & CDNs
     └── components/
         ├── common/                       # Reusable UI primitives & brand marks

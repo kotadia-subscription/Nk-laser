@@ -36,7 +36,8 @@ import {
   loadCategories,
   loadPowerRanges,
   loadInquiries,
-  syncConfigurationWithServer
+  syncConfigurationWithServer,
+  getLastServerSyncTime
 } from './lib/storage';
 import {
   fetchPublicSettings,
@@ -102,7 +103,7 @@ export default function App() {
   useEffect(() => {
     applyThemeToDocument('light', DEFAULT_PRIMARY_COLOR, DEFAULT_ACCENT_COLOR);
     
-    let lastKnownVersion = localStorage.getItem('nklaser_last_server_sync') || '';
+    let lastKnownVersion = getLastServerSyncTime() || '';
 
     const applyConfigurationState = (config: FullAppConfigurationBackup) => {
       if (config.settings) setSettings(config.settings);
@@ -115,24 +116,8 @@ export default function App() {
       applyParsedUrlState(window.location.search, window.location.hash, config.products || [], config.categories || []);
     };
 
-    const refreshStateFromStorage = async () => {
-      // First load instant cached state
-      const s = loadSiteSettings();
-      const c = loadCategories();
-      const p = loadProducts();
-      const b = loadBrands();
-      const r = loadReviews();
-      const pr = loadPowerRanges();
-      const inqs = loadInquiries();
-      setSettings(s);
-      setCategories(c);
-      setPowerRanges(pr);
-      setProducts(p);
-      setBrands(b);
-      setReviews(r);
-      setInquiries(inqs);
-
-      // Async live fetch from backend API
+    const refreshLiveStateFromApi = async () => {
+      // Direct live fetch from authoritative backend / D1 database
       try {
         const [apiSettings, apiProducts, apiCats, apiBrands, apiPower, apiReviews] = await Promise.allSettled([
           fetchPublicSettings(),
@@ -144,17 +129,23 @@ export default function App() {
         ]);
 
         if (apiSettings.status === 'fulfilled' && apiSettings.value) setSettings(apiSettings.value);
-        const resolvedProducts = (apiProducts.status === 'fulfilled' && apiProducts.value && apiProducts.value.length > 0) ? apiProducts.value : p;
-        const resolvedCategories = (apiCats.status === 'fulfilled' && apiCats.value && apiCats.value.length > 0) ? apiCats.value : c;
-        if (apiProducts.status === 'fulfilled' && apiProducts.value && apiProducts.value.length > 0) setProducts(apiProducts.value);
-        if (apiCats.status === 'fulfilled' && apiCats.value && apiCats.value.length > 0) setCategories(apiCats.value);
-        if (apiBrands.status === 'fulfilled' && apiBrands.value && apiBrands.value.length > 0) setBrands(apiBrands.value);
-        if (apiPower.status === 'fulfilled' && apiPower.value && apiPower.value.length > 0) setPowerRanges(apiPower.value);
-        if (apiReviews.status === 'fulfilled' && apiReviews.value && apiReviews.value.length > 0) setReviews(apiReviews.value);
+        let resolvedProducts: ProductItem[] = [];
+        let resolvedCategories: ProductCategoryDef[] = [];
+        if (apiProducts.status === 'fulfilled' && apiProducts.value) {
+          resolvedProducts = apiProducts.value;
+          setProducts(apiProducts.value);
+        }
+        if (apiCats.status === 'fulfilled' && apiCats.value) {
+          resolvedCategories = apiCats.value;
+          setCategories(apiCats.value);
+        }
+        if (apiBrands.status === 'fulfilled' && apiBrands.value) setBrands(apiBrands.value);
+        if (apiPower.status === 'fulfilled' && apiPower.value) setPowerRanges(apiPower.value);
+        if (apiReviews.status === 'fulfilled' && apiReviews.value) setReviews(apiReviews.value);
 
         applyParsedUrlState(window.location.search, window.location.hash, resolvedProducts, resolvedCategories);
       } catch (err) {
-        // Fallback gracefully on cached state
+        console.warn('Could not complete live fetch from API:', err);
       }
     };
 
@@ -222,7 +213,7 @@ export default function App() {
     // Cross-tab storage change synchronization
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key && (e.key.startsWith('nk_laser_') || e.key.startsWith('nklaser_'))) {
-        refreshStateFromStorage();
+        refreshLiveStateFromApi();
       }
     };
 
