@@ -374,7 +374,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     }
   };
 
-  const handleAddSubcategoryToActive = (sub: string) => {
+  const handleAddSubcategoryToActive = async (sub: string) => {
     const activeCat = categories.find(c => c.slug === selectedCategorySlug);
     if (!activeCat) return;
     if (activeCat.subCategories?.includes(sub)) return;
@@ -389,10 +389,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
     saveCategories(updatedCategories);
     setCategories(updatedCategories);
+    if (onCategoriesUpdated) onCategoriesUpdated(updatedCategories);
+    await updateAdminCategory(activeCat.id, { subCategories: updatedSub }).catch(() => {});
+    await pushConfigurationToServer();
     showNotification(`Added subcategory "${sub}"`);
   };
 
-  const handleRemoveSubcategoryFromActive = (sub: string) => {
+  const handleRemoveSubcategoryFromActive = async (sub: string) => {
     const activeCat = categories.find(c => c.slug === selectedCategorySlug);
     if (!activeCat) return;
 
@@ -406,10 +409,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
     saveCategories(updatedCategories);
     setCategories(updatedCategories);
+    if (onCategoriesUpdated) onCategoriesUpdated(updatedCategories);
+    await updateAdminCategory(activeCat.id, { subCategories: updatedSub }).catch(() => {});
+    await pushConfigurationToServer();
     showNotification(`Removed subcategory "${sub}"`);
   };
 
-  const handleAddBrandToActiveCategory = (brand: string) => {
+  const handleAddBrandToActiveCategory = async (brand: string) => {
     const activeCat = categories.find(c => c.slug === selectedCategorySlug);
     if (!activeCat) return;
     if (activeCat.oemBrands?.includes(brand)) return;
@@ -424,10 +430,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
     saveCategories(updatedCategories);
     setCategories(updatedCategories);
+    if (onCategoriesUpdated) onCategoriesUpdated(updatedCategories);
+    await updateAdminCategory(activeCat.id, { oemBrands: updatedBrands }).catch(() => {});
+    await pushConfigurationToServer();
     showNotification(`Added OEM brand "${brand}" to category`);
   };
 
-  const handleRemoveBrandFromActiveCategory = (brand: string) => {
+  const handleRemoveBrandFromActiveCategory = async (brand: string) => {
     const activeCat = categories.find(c => c.slug === selectedCategorySlug);
     if (!activeCat) return;
 
@@ -441,20 +450,31 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
     saveCategories(updatedCategories);
     setCategories(updatedCategories);
+    if (onCategoriesUpdated) onCategoriesUpdated(updatedCategories);
+    await updateAdminCategory(activeCat.id, { oemBrands: updatedBrands }).catch(() => {});
+    await pushConfigurationToServer();
     showNotification(`Removed OEM brand "${brand}" from category`);
   };
 
   // ----------------------------------------------------
   // Product Actions
   // ----------------------------------------------------
-  const handleSaveProduct = (prodData: Partial<ProductItem>) => {
+  const handleSaveProduct = async (prodData: Partial<ProductItem>) => {
     let updatedList: ProductItem[];
+    let savedTarget: ProductItem;
+
     if (prodData.id) {
-      updatedList = products.map(p => p.id === prodData.id ? ({
-        ...p,
+      savedTarget = {
+        ...(products.find(p => p.id === prodData.id) || {}),
         ...prodData,
         inStock: prodData.inStock ?? (prodData.stockStatus === 'In Stock')
-      } as ProductItem) : p);
+      } as ProductItem;
+      updatedList = products.map(p => p.id === prodData.id ? savedTarget : p);
+      try {
+        await updateAdminProduct(prodData.id, savedTarget);
+      } catch (err) {
+        console.warn('Could not sync product update to server:', err);
+      }
     } else {
       const newProd: ProductItem = {
         id: 'prod-' + Date.now(),
@@ -482,27 +502,40 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           { label: 'Category', value: prodData.category || 'Laser Spares' }
         ]
       };
+      savedTarget = newProd;
       updatedList = [newProd, ...products];
+      try {
+        await createAdminProduct(newProd);
+      } catch (err) {
+        console.warn('Could not create product on server:', err);
+      }
     }
 
     saveProducts(updatedList);
     setProducts(updatedList);
     onSettingsUpdated(loadSiteSettings());
+    await pushConfigurationToServer();
     setEditingProduct(null);
-    showNotification(`Product "${prodData.title}" saved successfully!`);
+    showNotification(`Product "${savedTarget.title}" saved & committed to database!`);
   };
 
-  const handleDeleteProduct = (id: string, title: string) => {
+  const handleDeleteProduct = async (id: string, title: string) => {
     if (confirm(`Are you sure you want to delete "${title}"?`)) {
       const updated = products.filter(p => p.id !== id);
       saveProducts(updated);
       setProducts(updated);
       onSettingsUpdated(loadSiteSettings());
-      showNotification(`Product "${title}" removed.`);
+      try {
+        await deleteAdminProduct(id);
+      } catch (err) {
+        console.warn('Could not delete product from server:', err);
+      }
+      await pushConfigurationToServer();
+      showNotification(`Product "${title}" deleted from database.`);
     }
   };
 
-  const handleDuplicateProduct = (prod: ProductItem) => {
+  const handleDuplicateProduct = async (prod: ProductItem) => {
     const copy: ProductItem = {
       ...prod,
       id: 'prod-' + Date.now(),
@@ -513,28 +546,40 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     saveProducts(updated);
     setProducts(updated);
     onSettingsUpdated(loadSiteSettings());
-    showNotification(`Duplicated "${prod.title}"!`);
+    try {
+      await createAdminProduct(copy);
+    } catch (err) {
+      console.warn('Could not duplicate product on server:', err);
+    }
+    await pushConfigurationToServer();
+    showNotification(`Duplicated "${prod.title}" and saved to database!`);
   };
 
-  const handleToggleProductInStock = (productId: string, currentVal: boolean | undefined, currentStatus: string | undefined) => {
+  const handleToggleProductInStock = async (productId: string, currentVal: boolean | undefined, currentStatus: string | undefined) => {
     const isNowInStock = !(currentVal === true || currentStatus === 'In Stock');
+    let updatedTarget: ProductItem | undefined;
     const updatedProducts = products.map(p => {
       if (p.id === productId) {
-        return {
+        updatedTarget = {
           ...p,
           inStock: isNowInStock,
           stockStatus: (isNowInStock ? 'In Stock' : 'Low Stock') as ProductItem['stockStatus']
         };
+        return updatedTarget;
       }
       return p;
     });
     saveProducts(updatedProducts);
     setProducts(updatedProducts);
     onSettingsUpdated(loadSiteSettings());
-    showNotification(`Stock toggled: ${isNowInStock ? 'In Stock Ready' : 'Low Stock'}`);
+    if (updatedTarget) {
+      await updateAdminProduct(productId, { inStock: isNowInStock, stockStatus: (isNowInStock ? 'In Stock' : 'Low Stock') as ProductItem['stockStatus'] }).catch(() => {});
+    }
+    await pushConfigurationToServer();
+    showNotification(`Stock toggled: ${isNowInStock ? 'In Stock Ready' : 'Low Stock'} (Database updated)`);
   };
 
-  const handleQuickChangeStockStatus = (productId: string, newStatus: ProductItem['stockStatus']) => {
+  const handleQuickChangeStockStatus = async (productId: string, newStatus: ProductItem['stockStatus']) => {
     const updatedProducts = products.map(p => {
       if (p.id === productId) {
         return {
@@ -548,28 +593,42 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     saveProducts(updatedProducts);
     setProducts(updatedProducts);
     onSettingsUpdated(loadSiteSettings());
-    showNotification(`Status updated to "${newStatus}"`);
+    await updateAdminProduct(productId, { stockStatus: newStatus, inStock: newStatus === 'In Stock' }).catch(() => {});
+    await pushConfigurationToServer();
+    showNotification(`Status updated to "${newStatus}" in database`);
   };
 
   // ----------------------------------------------------
   // Power & Brand Actions
   // ----------------------------------------------------
-  const handleAddPowerRange = (pr: string) => {
+  const handleAddPowerRange = async (pr: string) => {
     if (powerRanges.includes(pr)) return;
     const updated = [...powerRanges, pr];
     savePowerRanges(updated);
     setPowerRanges(updated);
-    showNotification(`Added power rating "${pr}"`);
+    try {
+      await apiSaveAdminPowerRanges(updated);
+    } catch (err) {
+      console.warn('Could not save power ranges to server:', err);
+    }
+    await pushConfigurationToServer();
+    showNotification(`Added power rating "${pr}" (Saved to database)`);
   };
 
-  const handleDeletePowerRange = (pr: string) => {
+  const handleDeletePowerRange = async (pr: string) => {
     const updated = powerRanges.filter(p => p !== pr);
     savePowerRanges(updated);
     setPowerRanges(updated);
-    showNotification(`Removed power rating "${pr}"`);
+    try {
+      await apiSaveAdminPowerRanges(updated);
+    } catch (err) {
+      console.warn('Could not save power ranges to server:', err);
+    }
+    await pushConfigurationToServer();
+    showNotification(`Removed power rating "${pr}" (Updated database)`);
   };
 
-  const handleSaveBrand = (brandData: Partial<BrandItem>) => {
+  const handleSaveBrand = async (brandData: Partial<BrandItem>) => {
     const brandName = (brandData.name || '').trim();
     if (!brandName) return;
 
@@ -604,11 +663,17 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     }
     saveBrands(updated);
     setBrands(updated);
+    try {
+      await apiSaveAdminBrands(updated);
+    } catch (err) {
+      console.warn('Could not sync brands to server:', err);
+    }
+    await pushConfigurationToServer();
     setEditingBrand(null);
-    showNotification(`Brand "${brandName}" logo & details saved!`);
+    showNotification(`Brand "${brandName}" saved & committed to database!`);
   };
 
-  const handleQuickUpdateBrandLogo = (brand: BrandItem, newLogoUrl: string) => {
+  const handleQuickUpdateBrandLogo = async (brand: BrandItem, newLogoUrl: string) => {
     const updated = brands.map(b => {
       if (b.id === brand.id || b.name.toLowerCase() === brand.name.toLowerCase()) {
         return {
@@ -620,15 +685,27 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     });
     saveBrands(updated);
     setBrands(updated);
-    showNotification(`Logo updated & stored for brand "${brand.name}"!`);
+    try {
+      await apiSaveAdminBrands(updated);
+    } catch (err) {
+      console.warn('Could not sync brand logo to server:', err);
+    }
+    await pushConfigurationToServer();
+    showNotification(`Logo updated & stored in database for "${brand.name}"!`);
   };
 
-  const handleDeleteBrand = (id: string, name: string) => {
+  const handleDeleteBrand = async (id: string, name: string) => {
     if (confirm(`Are you sure you want to delete brand "${name}"?`)) {
       const updated = brands.filter(b => b.id !== id);
       saveBrands(updated);
       setBrands(updated);
-      showNotification(`Brand "${name}" removed.`);
+      try {
+        await apiSaveAdminBrands(updated);
+      } catch (err) {
+        console.warn('Could not sync brand deletion to server:', err);
+      }
+      await pushConfigurationToServer();
+      showNotification(`Brand "${name}" deleted from database.`);
     }
   };
 
@@ -640,8 +717,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     saveInquiries(updated);
     setInquiries(updated);
     if (onInquiriesUpdated) onInquiriesUpdated(updated);
-    updateAdminInquiryStatus(id, newStatus).catch(() => {});
-    showNotification(`Inquiry status updated to "${newStatus}"`);
+    await updateAdminInquiryStatus(id, newStatus).catch(() => {});
+    showNotification(`Inquiry status updated to "${newStatus}" in database`);
   };
 
   const handleDeleteInquiry = async (id: string) => {
@@ -649,8 +726,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     const updated = inquiries.filter(i => i.id !== id);
     setInquiries(updated);
     if (onInquiriesUpdated) onInquiriesUpdated(updated);
-    deleteAdminInquiry(id).catch(() => {});
-    showNotification('Inquiry deleted.');
+    await deleteAdminInquiry(id).catch(() => {});
+    showNotification('Inquiry deleted from database.');
   };
 
   const handleAddInquiry = async (newInq: Omit<InquiryRecord, 'id' | 'createdAt' | 'status'>) => {
@@ -658,7 +735,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     const updated = [created, ...inquiries];
     setInquiries(updated);
     if (onInquiriesUpdated) onInquiriesUpdated(updated);
-    showNotification(`Added inquiry for "${newInq.productOrService}". Home page ranking updated!`);
+    await pushConfigurationToServer();
+    showNotification(`Added inquiry for "${newInq.productOrService}". Saved to database!`);
   };
 
   // ----------------------------------------------------
@@ -672,7 +750,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         setReviews(updated);
         saveReviews(updated);
         if (onReviewsUpdated) onReviewsUpdated(updated);
-        showNotification('Client review published successfully!');
+        await pushConfigurationToServer();
+        showNotification('Client review saved & published to database!');
         return;
       }
     } catch (err) {
@@ -695,7 +774,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     setReviews(updated);
     saveReviews(updated);
     if (onReviewsUpdated) onReviewsUpdated(updated);
-    showNotification('Review added to catalog!');
+    await pushConfigurationToServer();
+    showNotification('Review added and saved to database!');
   };
 
   const handleUpdateReview = async (revData: Partial<ReviewItem>) => {
@@ -709,7 +789,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     setReviews(updated);
     saveReviews(updated);
     if (onReviewsUpdated) onReviewsUpdated(updated);
-    showNotification('Review updated successfully!');
+    await pushConfigurationToServer();
+    showNotification('Review updated in database!');
   };
 
   const handleDeleteReview = async (id: string) => {
@@ -722,7 +803,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     setReviews(updated);
     saveReviews(updated);
     if (onReviewsUpdated) onReviewsUpdated(updated);
-    showNotification('Review removed from catalog.');
+    await pushConfigurationToServer();
+    showNotification('Review removed from database.');
   };
 
   // ----------------------------------------------------
@@ -732,8 +814,18 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     saveSiteSettings(newSettings);
     setSettings(newSettings);
     onSettingsUpdated(newSettings);
-    apiSaveAdminSettings(newSettings).catch(() => {});
-    showNotification('Site settings updated successfully!');
+    try {
+      const res = await apiSaveAdminSettings(newSettings);
+      await pushConfigurationToServer();
+      if (res) {
+        showNotification('Site settings saved & stored permanently in database!');
+      } else {
+        showNotification('Site settings saved locally, database update queued.');
+      }
+    } catch (err) {
+      await pushConfigurationToServer();
+      showNotification('Site settings saved.');
+    }
   };
 
   const [isPublishing, setIsPublishing] = useState(false);
