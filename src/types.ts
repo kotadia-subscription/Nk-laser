@@ -21,6 +21,10 @@ export type ServiceCategory =
   | 'Custom Fabrication';
 
 export type StoreCategorySlug = 
+  | 'laser-spares-consumables'
+  | 'laser-source'
+  | 'laser-chiller'
+  | 'laser-chillers'
   | 'protective-lenses'
   | 'cutting-nozzles'
   | 'ceramic-rings'
@@ -30,7 +34,8 @@ export type StoreCategorySlug =
   | 'laser-welding-spares'
   | 'pneumatic-smc-valves'
   | 'laser-sources-qbh'
-  | 'optics-cleaning-maintenance';
+  | 'optics-cleaning-maintenance'
+  | string;
 
 export type PageView = 
   | 'home'
@@ -165,6 +170,7 @@ export interface ProductTemplateConfig {
 
 export interface ProductItem {
   id: string;
+  guid?: string; // Guaranteed RFC4122 v4 unique GUID
   sku?: string;
   title: string;
   category: ServiceCategory | string;

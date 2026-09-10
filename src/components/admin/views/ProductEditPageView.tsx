@@ -176,7 +176,11 @@ export const ProductEditPageView: React.FC<ProductEditPageViewProps> = ({
       alert('Please enter a product title or spare part description.');
       return;
     }
-    onSave(formData);
+    const finalData: Partial<ProductItem> = {
+      ...formData,
+      guid: formData.guid || (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : ('guid-' + Date.now().toString(36) + Math.random().toString(36).substring(2, 9)))
+    };
+    onSave(finalData);
     setIsSavedNotice(true);
     setTimeout(() => setIsSavedNotice(false), 2000);
   };

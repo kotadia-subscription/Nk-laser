@@ -37,6 +37,7 @@ interface StoreCatalogViewProps {
   initialPower?: string;
   initialStockOnly?: boolean;
   initialSortBy?: 'popular' | 'price-asc' | 'price-desc' | 'name';
+  initialSubCategory?: string;
   onSelectCategory: (slug: string) => void;
   onSelectBrand?: (brand: string) => void;
   onSelectProduct: (product: ProductItem) => void;
@@ -54,6 +55,7 @@ export function StoreCatalogView({
   initialPower = 'all',
   initialStockOnly = false,
   initialSortBy = 'popular',
+  initialSubCategory = 'all',
   onSelectCategory,
   onSelectBrand,
   onSelectProduct,
@@ -72,6 +74,7 @@ export function StoreCatalogView({
   const [searchQuery, setSearchQuery] = useState(initialSearchQuery || '');
   const [selectedBrand, setSelectedBrand] = useState<string>(selectedBrandProp || 'all');
   const [selectedPower, setSelectedPower] = useState<string>(initialPower || 'all');
+  const [selectedSubCategory, setSelectedSubCategory] = useState<string>(initialSubCategory || 'all');
   const [inStockOnly, setInStockOnly] = useState<boolean>(initialStockOnly || false);
   const [sortBy, setSortBy] = useState<'popular' | 'price-asc' | 'price-desc' | 'name'>(initialSortBy || 'popular');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
@@ -128,6 +131,23 @@ export function StoreCatalogView({
     }
   }, [initialSearchQuery]);
 
+  // Synchronize subcategory when initialSubCategory prop changes
+  useEffect(() => {
+    if (initialSubCategory !== undefined) {
+      setSelectedSubCategory(initialSubCategory);
+    }
+  }, [initialSubCategory]);
+
+  // Read sub from URL if present on initial mount
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const subParam = params.get('sub');
+    if (subParam) {
+      setSelectedSubCategory(subParam);
+    }
+  }, []);
+
   // Live URL synchronization: keep browser address bar encoded with active filters
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -138,6 +158,12 @@ export function StoreCatalogView({
       params.set('cat', selectedCategorySlug);
     } else {
       params.delete('cat');
+    }
+
+    if (selectedSubCategory && selectedSubCategory !== 'all') {
+      params.set('sub', selectedSubCategory);
+    } else {
+      params.delete('sub');
     }
 
     if (selectedBrand && selectedBrand !== 'all') {
@@ -173,7 +199,7 @@ export function StoreCatalogView({
     const newSearch = params.toString() ? `?${params.toString()}` : '';
     const newUrl = `${window.location.pathname}${newSearch}`;
     window.history.replaceState(null, '', newUrl);
-  }, [selectedCategorySlug, selectedBrand, selectedPower, searchQuery, inStockOnly, sortBy]);
+  }, [selectedCategorySlug, selectedSubCategory, selectedBrand, selectedPower, searchQuery, inStockOnly, sortBy]);
 
   const cleanNumber = settings.whatsappNumber.replace(/[^0-9]/g, '');
 
@@ -204,20 +230,34 @@ export function StoreCatalogView({
     return products.filter((product) => {
       // Category filter
       if (selectedCategorySlug !== 'all') {
-        const matchesCategory = product.categorySlug === selectedCategorySlug || 
+        const matchesCategory = 
+          product.categorySlug === selectedCategorySlug || 
           product.category.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-') === selectedCategorySlug ||
-          (selectedCategorySlug === 'laser-spares-consumables') ||
-          (selectedCategorySlug === 'protective-lenses' && (product.categorySlug === 'protective-lenses' || product.title.toLowerCase().includes('lens'))) ||
-          (selectedCategorySlug === 'cutting-nozzles' && (product.categorySlug === 'cutting-nozzles' || product.title.toLowerCase().includes('nozzle'))) ||
-          (selectedCategorySlug === 'ceramic-rings' && (product.categorySlug === 'ceramic-rings' || product.categorySlug === 'ceramic-locking-ring' || product.title.toLowerCase().includes('ceramic'))) ||
-          (selectedCategorySlug === 'focusing-collimating-lenses' && (product.categorySlug === 'focus-collimation-lens' || product.title.toLowerCase().includes('focus') || product.title.toLowerCase().includes('collimat'))) ||
-          (selectedCategorySlug === 'laser-cutting-heads' && (product.categorySlug?.startsWith('cutting-head') || product.title.toLowerCase().includes('head'))) ||
-          (selectedCategorySlug === 'cnc-controllers-cypcut' && (product.categorySlug === 'control-card' || product.categorySlug === 'remote-controller' || product.categorySlug === 'rf-cable-sensor-cable' || product.title.toLowerCase().includes('cypcut') || product.title.toLowerCase().includes('bochu'))) ||
-          (selectedCategorySlug === 'laser-sources-qbh' && (product.categorySlug === 'laser-source' || product.categorySlug === 'qbh-protection-cap')) ||
-          (selectedCategorySlug === 'pneumatic-smc-valves' && (product.categorySlug === 'smc-valve' || product.title.toLowerCase().includes('smc'))) ||
-          (selectedCategorySlug === 'optics-cleaning-maintenance' && (product.categorySlug === 'cleaning-consumables' || product.categorySlug === 'safety-equipment' || product.title.toLowerCase().includes('swab') || product.title.toLowerCase().includes('clean')));
+          (selectedCategorySlug === 'laser-spares-consumables' && (product.categorySlug === 'laser-spares-consumables' || product.category === 'Laser Spares/Consumables')) ||
+          (selectedCategorySlug === 'laser-source' && (product.categorySlug === 'laser-source' || product.category === 'Laser Source')) ||
+          ((selectedCategorySlug === 'laser-chiller' || selectedCategorySlug === 'laser-chillers') && (product.categorySlug === 'laser-chiller' || product.category === 'Laser Chiller')) ||
+          // Backwards-compatible legacy category URLs
+          (selectedCategorySlug === 'protective-lenses' && (product.subCategory === 'Protective lens' || product.title.toLowerCase().includes('lens'))) ||
+          (selectedCategorySlug === 'cutting-nozzles' && (product.subCategory === 'Nozzles' || product.title.toLowerCase().includes('nozzle'))) ||
+          (selectedCategorySlug === 'ceramic-rings' && (product.subCategory?.toLowerCase().includes('ceramic') || product.title.toLowerCase().includes('ceramic'))) ||
+          (selectedCategorySlug === 'focusing-collimating-lenses' && (product.subCategory === 'Collimation & Focus lens' || product.title.toLowerCase().includes('focus') || product.title.toLowerCase().includes('collimat'))) ||
+          (selectedCategorySlug === 'laser-cutting-heads' && (product.subCategory === 'Cutting head & controller' || product.title.toLowerCase().includes('head'))) ||
+          (selectedCategorySlug === 'cnc-controllers-cypcut' && (product.subCategory === 'Cutting head & controller' || product.subCategory === 'Remote' || product.subCategory === 'RF cable' || product.subCategory === 'Amplifier')) ||
+          (selectedCategorySlug === 'laser-sources-qbh' && (product.categorySlug === 'laser-source' || product.subCategory === 'QBH protection cap' || product.subCategory === 'Fiber cable')) ||
+          (selectedCategorySlug === 'pneumatic-smc-valves' && (product.subCategory === 'Smc valve' || product.title.toLowerCase().includes('smc'))) ||
+          (selectedCategorySlug === 'optics-cleaning-maintenance' && (product.subCategory === 'Cleaning consumbles' || product.subCategory === 'Nozzle visual aligner'));
 
         if (!matchesCategory) return false;
+      }
+
+      // Subcategory filter
+      if (selectedSubCategory !== 'all') {
+        const targetSub = selectedSubCategory.toLowerCase().trim();
+        const matchesSub = Boolean(
+          (product.subCategory && product.subCategory.toLowerCase() === targetSub) ||
+          product.title.toLowerCase().includes(targetSub)
+        );
+        if (!matchesSub) return false;
       }
 
       // Brand filter
@@ -282,7 +322,7 @@ export function StoreCatalogView({
       if (!a.isPopular && b.isPopular) return 1;
       return 0;
     });
-  }, [products, selectedCategorySlug, selectedBrand, selectedPower, inStockOnly, searchQuery, sortBy]);
+  }, [products, selectedCategorySlug, selectedSubCategory, selectedBrand, selectedPower, inStockOnly, searchQuery, sortBy]);
 
   // Lazy loading: batch initial 30 products for instantaneous client-side paint, then lazy load in background on scroll
   const INITIAL_BATCH_SIZE = 30;
@@ -295,7 +335,7 @@ export function StoreCatalogView({
   // Reset pagination batch on filter/search/sort change
   useEffect(() => {
     setVisibleCount(INITIAL_BATCH_SIZE);
-  }, [selectedCategorySlug, selectedBrand, selectedPower, inStockOnly, searchQuery, sortBy]);
+  }, [selectedCategorySlug, selectedSubCategory, selectedBrand, selectedPower, inStockOnly, searchQuery, sortBy]);
 
   const visibleProducts = useMemo(() => {
     return filteredProducts.slice(0, visibleCount);
@@ -355,6 +395,13 @@ export function StoreCatalogView({
 
   const activeCategoryDef = availableCategories.find(c => c.slug === selectedCategorySlug);
 
+  const activeSubCategories = useMemo(() => {
+    if (activeCategoryDef && activeCategoryDef.subCategories) {
+      return activeCategoryDef.subCategories;
+    }
+    return [];
+  }, [activeCategoryDef]);
+
   const handleWhatsAppProduct = (p: ProductItem, e: React.MouseEvent) => {
     e.stopPropagation();
     let text = `*🚨 INQUIRY FOR ${p.title}*\n`;
@@ -376,12 +423,13 @@ export function StoreCatalogView({
       onSelectBrand('all');
     }
     setSelectedPower('all');
+    setSelectedSubCategory('all');
     setInStockOnly(false);
     setSearchQuery('');
     onSelectCategory('all');
   };
 
-  const hasActiveFilters = selectedCategorySlug !== 'all' || selectedBrand !== 'all' || selectedPower !== 'all' || inStockOnly || searchQuery.trim() !== '';
+  const hasActiveFilters = selectedCategorySlug !== 'all' || selectedSubCategory !== 'all' || selectedBrand !== 'all' || selectedPower !== 'all' || inStockOnly || searchQuery.trim() !== '';
 
   return (
     <div className={`min-h-screen pt-3 sm:pt-4 pb-8 px-4 sm:px-6 lg:px-8 transition-colors bg-zinc-50 text-zinc-900`}>

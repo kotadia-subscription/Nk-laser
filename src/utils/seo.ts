@@ -36,6 +36,10 @@ export function findProductBySlug(target: string, products: ProductItem[]): Prod
   const byId = products.find(p => p.id.toLowerCase() === cleanTarget);
   if (byId) return byId;
 
+  // 1b. Direct GUID match
+  const byGuid = products.find(p => p.guid && p.guid.toLowerCase() === cleanTarget);
+  if (byGuid) return byGuid;
+
   // 2. Direct SKU match
   const bySku = products.find(p => p.sku && p.sku.toLowerCase() === cleanTarget);
   if (bySku) return bySku;
