@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Home,
   Store, 
@@ -62,7 +62,18 @@ export const Navbar: React.FC<NavbarProps> = ({
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileExpandedSection, setMobileExpandedSection] = useState<string | null>(null);
   const [mobileExpandedCategory, setMobileExpandedCategory] = useState<string | null>(null);
+  const [desktopExpandedCategory, setDesktopExpandedCategory] = useState<string | null>(null);
   const [hoveredMenu, setHoveredMenu] = useState<string | null>(null);
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 8);
+    };
+    handleScroll();
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   const cleanNumber = (settings.whatsappNumber || '+919902035374').replace(/[^0-9]/g, '');
 
@@ -172,15 +183,40 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   return (
     <header 
-      className="sticky top-0 z-50 bg-white text-[var(--text-primary)] border-b border-[var(--border)] shadow-[0_2px_12px_rgba(0,0,0,0.06)]"
+      className={`sticky top-0 z-50 transition-all duration-300 border-b ${
+        isScrolled 
+          ? 'bg-white/95 dark:bg-slate-900/95 backdrop-blur-md shadow-[0_14px_36px_-6px_rgba(22,38,87,0.18),0_4px_14px_-2px_rgba(0,0,0,0.08)] border-slate-300 dark:border-slate-700' 
+          : 'bg-white/95 dark:bg-slate-900/95 backdrop-blur-md shadow-[0_8px_26px_-4px_rgba(22,38,87,0.12),0_2px_8px_-1px_rgba(0,0,0,0.05)] border-slate-200/90 dark:border-slate-800'
+      } text-[var(--text-primary)]`}
       onMouseLeave={handleMouseLeave}
     >
-      {/* Top Precision Accent Gradient Strip */}
+      {/* Top Precision Laser Glow Strip */}
       <div 
-        className="h-[3px] w-full" 
+        className="h-[3.5px] w-full relative z-20 shadow-[0_1px_8px_rgba(22,38,87,0.25)]" 
         style={{ 
-          background: 'linear-gradient(90deg, var(--primary) 0%, var(--accent) 50%, var(--primary) 100%)' 
+          background: 'linear-gradient(90deg, var(--primary) 0%, var(--accent) 35%, #F59E0B 50%, var(--accent) 65%, var(--primary) 100%)' 
         }} 
+      />
+
+      {/* Top Internal Specular Gloss Sheen */}
+      <div className="absolute inset-x-0 top-[3.5px] h-5 bg-gradient-to-b from-white/70 dark:from-white/5 to-transparent pointer-events-none" />
+
+      {/* Bottom Laser Beam Glare / Highlight line separating header from main content */}
+      <div 
+        className="absolute inset-x-0 -bottom-[1px] h-[1.5px] z-20 pointer-events-none transition-opacity duration-300"
+        style={{
+          background: 'linear-gradient(90deg, transparent 3%, var(--primary) 22%, var(--accent) 50%, #F59E0B 68%, var(--primary) 82%, transparent 97%)',
+          opacity: isScrolled ? 0.95 : 0.75
+        }}
+      />
+
+      {/* Ambient Drop Glow (soft laser radiance extending down onto main content) */}
+      <div 
+        className="absolute inset-x-0 -bottom-3.5 h-3.5 pointer-events-none transition-opacity duration-300 z-10"
+        style={{
+          background: 'linear-gradient(180deg, rgba(22, 38, 87, 0.09) 0%, rgba(22, 38, 87, 0.02) 65%, transparent 100%)',
+          opacity: isScrolled ? 1 : 0.75
+        }}
       />
 
       {/* ========================================================================= */}
@@ -298,56 +334,118 @@ export const Navbar: React.FC<NavbarProps> = ({
                           </span>
                         </div>
 
-                        {/* Category List */}
-                        <div className="p-2 max-h-[320px] overflow-y-auto space-y-0.5">
-                          {displayCategories.map((cat) => (
-                            <button
-                              key={cat.id || cat.slug}
-                              onClick={() => handleCategorySelect(cat.slug)}
-                              className="w-full flex items-center gap-3 p-2 rounded-xl border border-transparent hover:border-[var(--primary)]/30 hover:bg-[var(--surface-secondary)] text-left transition-all group cursor-pointer"
-                            >
-                              <div className="p-2 rounded-lg border border-[var(--border)] theme-light-badge shrink-0 group-hover:scale-105 transition-transform">
-                                {getCategoryIcon(cat.iconName)}
-                              </div>
-                              <div className="min-w-0 flex-1">
-                                <div className="flex items-center justify-between">
-                                  <span className="text-xs font-bold text-[var(--text-primary)] group-hover:text-[var(--primary)] transition-colors truncate">
-                                    {cat.name}
-                                  </span>
-                                  {cat.itemCount ? (
-                                    <span className="text-[10px] text-[var(--text-secondary)] font-mono shrink-0 ml-1">
-                                      {cat.itemCount} items
-                                    </span>
-                                  ) : null}
+                        {/* Category List with Expandable Subcategories */}
+                        <div className="p-2 max-h-[380px] overflow-y-auto space-y-1">
+                          {displayCategories.map((cat) => {
+                            const hasSubCategories = Boolean(cat.subCategories && cat.subCategories.length > 0);
+                            const isExpanded = desktopExpandedCategory === cat.slug;
+
+                            return (
+                              <div 
+                                key={cat.id || cat.slug}
+                                className={`rounded-xl border transition-all ${
+                                  isExpanded 
+                                    ? 'border-[var(--primary)]/40 bg-[var(--surface-secondary)]/50 shadow-2xs' 
+                                    : 'border-transparent hover:border-[var(--primary)]/20 hover:bg-[var(--surface-secondary)]'
+                                }`}
+                              >
+                                <div className="flex items-center gap-2 p-1.5 group">
+                                  {/* Main Category Click -> Navigate */}
+                                  <button
+                                    type="button"
+                                    onClick={() => handleCategorySelect(cat.slug)}
+                                    className="flex-1 flex items-center gap-2.5 text-left cursor-pointer min-w-0"
+                                  >
+                                    <div className="p-2 rounded-lg border border-[var(--border)] theme-light-badge shrink-0 group-hover:scale-105 transition-transform">
+                                      {getCategoryIcon(cat.iconName)}
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                      <div className="flex items-center justify-between gap-1">
+                                        <span className="text-xs font-bold text-[var(--text-primary)] group-hover:text-[var(--primary)] transition-colors truncate">
+                                          {cat.name}
+                                        </span>
+                                        {cat.itemCount ? (
+                                          <span className="text-[9.5px] text-[var(--text-secondary)] font-mono shrink-0">
+                                            {cat.itemCount} items
+                                          </span>
+                                        ) : null}
+                                      </div>
+                                      <p className="text-[10px] text-[var(--text-secondary)] truncate">
+                                        {cat.description || (hasSubCategories ? `${cat.subCategories?.length} subcategories available` : 'Industrial laser spares')}
+                                      </p>
+                                    </div>
+                                  </button>
+
+                                  {/* Right Arrow: Click to Expand / Collapse Subcategories */}
+                                  {hasSubCategories ? (
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setDesktopExpandedCategory(isExpanded ? null : cat.slug);
+                                      }}
+                                      className={`p-1.5 rounded-lg border transition-all cursor-pointer shrink-0 ${
+                                        isExpanded 
+                                          ? 'border-[var(--primary)] bg-[var(--primary)] text-white shadow-2xs' 
+                                          : 'border-[var(--border)] bg-[var(--surface)] text-[var(--text-secondary)] hover:text-[var(--primary)] hover:border-[var(--primary)]/50'
+                                      }`}
+                                      title={isExpanded ? "Collapse subcategories" : "Expand subcategories"}
+                                      aria-label={`Toggle ${cat.name} subcategories`}
+                                    >
+                                      <ChevronRight 
+                                        className={`w-3.5 h-3.5 transition-transform duration-200 ${
+                                          isExpanded ? 'rotate-90' : 'group-hover:translate-x-0.5'
+                                        }`} 
+                                      />
+                                    </button>
+                                  ) : (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleCategorySelect(cat.slug)}
+                                      className="p-1.5 text-[var(--text-secondary)] group-hover:text-[var(--primary)] transition-colors cursor-pointer shrink-0"
+                                      title="Browse category"
+                                    >
+                                      <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                                    </button>
+                                  )}
                                 </div>
-                                <p className="text-[10px] text-[var(--text-secondary)] truncate">
-                                  {cat.description || (cat.subCategories && cat.subCategories.length > 0 ? cat.subCategories.slice(0, 3).join(', ') : 'Industrial laser spares')}
-                                </p>
-                                {cat.subCategories && cat.subCategories.length > 0 && (
-                                  <div className="flex flex-wrap gap-1 mt-1.5" onClick={(e) => e.stopPropagation()}>
-                                    {cat.subCategories.slice(0, 4).map((sub) => (
-                                      <span
-                                        key={sub}
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          handleSubCategorySelect(sub, cat.slug);
-                                        }}
-                                        className="text-[9px] px-1.5 py-0.5 rounded-md bg-[var(--surface-secondary)] hover:bg-[var(--primary)] hover:text-white transition-colors border border-[var(--border)] cursor-pointer"
+
+                                {/* Expanded Subcategories Panel in Web UI */}
+                                {isExpanded && hasSubCategories && cat.subCategories && (
+                                  <div className="mx-2 mb-2 p-2.5 rounded-xl bg-[var(--surface)] border border-[var(--border)] space-y-2 animate-fadeIn">
+                                    <div className="flex items-center justify-between text-[10px] font-bold text-[var(--text-secondary)] pb-1.5 border-b border-[var(--border)]">
+                                      <span className="uppercase tracking-wider font-mono">
+                                        Subcategories ({cat.subCategories.length})
+                                      </span>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleCategorySelect(cat.slug)}
+                                        className="text-[var(--primary)] hover:underline flex items-center gap-0.5 font-bold cursor-pointer"
                                       >
-                                        {sub}
-                                      </span>
-                                    ))}
-                                    {cat.subCategories.length > 4 && (
-                                      <span className="text-[9px] text-[var(--text-secondary)] self-center">
-                                        +{cat.subCategories.length - 4} more
-                                      </span>
-                                    )}
+                                        <span>View All Spares</span>
+                                        <ArrowRight className="w-2.5 h-2.5" />
+                                      </button>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-1 max-h-44 overflow-y-auto pr-1">
+                                      {cat.subCategories.map((sub) => (
+                                        <button
+                                          key={sub}
+                                          type="button"
+                                          onClick={() => handleSubCategorySelect(sub, cat.slug)}
+                                          className="flex items-center gap-1.5 text-left px-2 py-1 rounded-md text-[10.5px] font-medium text-[var(--text-primary)] hover:text-[var(--primary)] hover:bg-[var(--surface-secondary)] border border-transparent hover:border-[var(--primary)]/20 transition-all cursor-pointer truncate group/sub"
+                                          title={`Browse ${sub}`}
+                                        >
+                                          <span className="w-1.5 h-1.5 rounded-full bg-[var(--primary)]/50 group-hover/sub:bg-[var(--primary)] shrink-0"></span>
+                                          <span className="truncate">{sub}</span>
+                                        </button>
+                                      ))}
+                                    </div>
                                   </div>
                                 )}
                               </div>
-                              <ChevronRight className="w-3.5 h-3.5 text-[var(--text-secondary)] group-hover:text-[var(--primary)] group-hover:translate-x-0.5 transition-all shrink-0" />
-                            </button>
-                          ))}
+                            );
+                          })}
                         </div>
 
                         {/* Quick OEM Brands */}

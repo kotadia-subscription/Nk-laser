@@ -11,11 +11,11 @@
  */
 export function extractInstagramUsername(urlOrHandle?: string): string {
   if (!urlOrHandle || typeof urlOrHandle !== 'string') {
-    return 'laser.nk';
+    return 'nklaser.india';
   }
 
   let clean = urlOrHandle.trim();
-  if (!clean) return 'laser.nk';
+  if (!clean) return 'nklaser.india';
 
   // Strip query parameters, search parameters, or hashes
   clean = clean.split('?')[0].split('#')[0];
@@ -32,7 +32,7 @@ export function extractInstagramUsername(urlOrHandle?: string): string {
   // Strip trailing slashes or spaces
   clean = clean.replace(/[\/\s]+$/, '');
 
-  return clean || 'laser.nk';
+  return clean || 'nklaser.india';
 }
 
 /**
@@ -40,11 +40,11 @@ export function extractInstagramUsername(urlOrHandle?: string): string {
  */
 export function getInstagramUrl(urlOrHandle?: string): string {
   if (!urlOrHandle || typeof urlOrHandle !== 'string') {
-    return 'https://www.instagram.com/laser.nk';
+    return 'https://www.instagram.com/nklaser.india';
   }
 
   const clean = urlOrHandle.trim();
-  if (!clean) return 'https://www.instagram.com/laser.nk';
+  if (!clean) return 'https://www.instagram.com/nklaser.india';
 
   if (clean.startsWith('http://') || clean.startsWith('https://')) {
     return clean;
