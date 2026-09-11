@@ -154,5 +154,6 @@ npm start
 
 ---
 
-## ☁️ Deployment
-For full instructions on deploying to **Cloudflare Pages**, **Cloudflare Workers**, and **Cloudflare D1**, refer to [CLOUDFLARE.md](./CLOUDFLARE.md).
+## ☁️ Deployment & Production Data Management
+- For complete Cloudflare Pages, Cloudflare Workers, and Cloudflare D1 database setup instructions, refer to **[CLOUDFLARE.md](./CLOUDFLARE.md)**.
+- For data persistence, "Sync with Server" mechanics, zero-data-loss deployments, safe schema migrations, and live debugging, refer to **[DATA_MANAGEMENT.md](./DATA_MANAGEMENT.md)**.

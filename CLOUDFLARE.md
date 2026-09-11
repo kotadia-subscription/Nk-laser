@@ -262,7 +262,38 @@ npx wrangler pages deploy dist --project-name=nk-laser
 
 ---
 
-## 6. Post-Deployment Verification Checklist
+## 6. Real-Time Debugging & Edge Logging
+
+If issues arise on your live Cloudflare deployment (e.g., authentication failures, database query errors, or unhandled exceptions):
+
+### 6.1 Stream Live Edge Logs
+Run the Wrangler Tail command from your terminal:
+```bash
+# For Cloudflare Pages
+npx wrangler pages deployment tail --project-name=nk-laser
+
+# For Cloudflare Workers
+npx wrangler tail --config wrangler.worker.toml
+```
+Keep this window open while interacting with your site in the browser to view real-time request payloads, status codes, and server-side stack traces.
+
+### 6.2 Inspect D1 Database Directly from CLI
+```bash
+# Check D1 database details and metrics
+npx wrangler d1 info nk-laser-db
+
+# Check existing tables
+npx wrangler d1 execute nk-laser-db --command="SELECT name FROM sqlite_master WHERE type='table';" --remote
+
+# Inspect stored configuration timestamp
+npx wrangler d1 execute nk-laser-db --command="SELECT key, updated_at, length(value) FROM config;" --remote
+```
+
+For complete database lifecycle, zero-loss deployment strategies, and synchronization mechanics, consult **`DATA_MANAGEMENT.md`**.
+
+---
+
+## 7. Post-Deployment Verification Checklist
 
 After deploying your application:
 
