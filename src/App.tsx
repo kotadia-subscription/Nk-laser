@@ -151,13 +151,17 @@ export default function App() {
       }
     };
 
-    // Immediate background sync with authoritative server configuration
+    // Immediate background sync with authoritative server configuration & fallback to direct API
     syncConfigurationWithServer().then((res) => {
       if (res.success && res.data) {
         if (res.lastPublishedAt) lastKnownVersion = res.lastPublishedAt;
         applyConfigurationState(res.data);
+      } else {
+        refreshLiveStateFromApi();
       }
-    }).catch(() => {});
+    }).catch(() => {
+      refreshLiveStateFromApi();
+    });
 
     // Poller for real-time live synchronization across all devices & browsers
     const checkLiveVersion = async () => {

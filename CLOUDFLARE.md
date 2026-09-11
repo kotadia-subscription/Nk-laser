@@ -85,14 +85,17 @@ When you make changes in the Admin Console (e.g. updating product pricing, stock
 
 ### Future Database Schema Changes & Automated Migration
 When you want to add new columns, tables, or database indexes in the future:
-1. Update `d1-schema.sql` with your new tables, columns, or indexes (always using `CREATE TABLE IF NOT EXISTS` or `ALTER TABLE`).
-2. Run the one-click database sync command from your terminal:
+1. Initialize tables or update schema:
    ```bash
-   npm run db:sync
+   npm run db:init
+   # or:
+   npx wrangler d1 execute nk-laser-db --file=./d1-schema.sql --remote
    ```
-   Or execute the bash script:
+2. Inject/seed the full master catalog into Cloudflare D1:
    ```bash
-   ./scripts/sync-database.sh
+   npm run db:seed
+   # or:
+   npx wrangler d1 execute nk-laser-db --file=./d1-seed.sql --remote
    ```
 3. Because the master catalog data is stored using a document store inside D1's `config` table, you can also add any new product attributes (like custom specs, OEM part numbers, or material compatibility) directly without requiring any SQL schema migration!
 

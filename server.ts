@@ -5,7 +5,7 @@ import crypto from 'crypto';
 import cookieParser from 'cookie-parser';
 import bcrypt from 'bcryptjs';
 import { createServer as createViteServer } from 'vite';
-import { DEFAULT_SITE_SETTINGS, INITIAL_PRODUCTS, INITIAL_REVIEWS, INITIAL_BRANDS, STORE_CATEGORIES } from './server/seedData';
+import { DEFAULT_SITE_SETTINGS } from './src/lib/storage';
 
 // Types
 import { ProductItem, ProductCategoryDef, BrandItem, ReviewItem, InquiryRecord, SiteSettings, BusinessAddress } from './src/types';
@@ -146,57 +146,54 @@ interface DatabaseStore {
   lastPublishedAt: string;
 }
 
-// Initial Database State with complete seed fallback
-let db: DatabaseStore = {
-  version: '2.0',
-  settings: DEFAULT_SITE_SETTINGS,
-  products: INITIAL_PRODUCTS,
-  categories: STORE_CATEGORIES,
-  brands: INITIAL_BRANDS,
-  reviews: INITIAL_REVIEWS,
-  inquiries: [
-    {
-      id: 'inq-101',
-      createdAt: new Date(Date.now() - 3600000 * 5).toISOString(),
-      customerName: 'Rajesh Patel',
-      customerPhone: '+91 98250 12345',
-      customerEmail: 'rajesh.patel@steelworks.in',
-      productOrService: 'D27.9 Protective Windows & Nozzles',
-      material: 'Fused Quartz / Copper',
-      thickness: '4.1 mm',
-      quantity: 50,
-      message: 'Need urgent dispatch of 50 pcs D27.9x4.1 lenses and D28 double nozzles for RayTools BM110 head.',
-      status: 'New',
-      source: 'Product Inquiry',
-      specsSummary: 'RayTools BM110 | 50 pcs | Express Dispatch'
-    },
-    {
-      id: 'inq-102',
-      createdAt: new Date(Date.now() - 3600000 * 28).toISOString(),
-      customerName: 'Ananya Sharma',
-      customerPhone: '+91 99011 88776',
-      customerEmail: 'purchase@precisionfab.in',
-      productOrService: 'Bochu CypCut Wireless Remote & RF Cable',
-      material: 'CNC Control Spares',
-      thickness: 'N/A',
-      quantity: 2,
-      message: 'Looking for 2 sets of wireless remote pendants and high-frequency RF cables for BCS100 controller.',
-      status: 'Quoted',
-      source: 'Product Inquiry',
-      specsSummary: 'Bochu FSCUT | 2 sets | Quoted on WhatsApp'
-    }
-  ],
-  powerRanges: ['1kW - 3kW', '3kW - 6kW', '6kW - 12kW', '12kW - 30kW', '30kW+'],
-  adminPasswordHash: DEFAULT_ADMIN_HASH,
-  lastPublishedAt: new Date().toISOString()
-};
+const CONFIG_FILE_PATH = path.join(process.cwd(), 'app-config.json');
 
-// In-memory runtime persistence
-// Note: Dynamic catalog state is maintained authoritatively in memory (dev/container) and Cloudflare D1 (production).
-// app-config.json is not used for catalog storage.
+function loadDatabaseFromDisk(): DatabaseStore {
+  if (fs.existsSync(CONFIG_FILE_PATH)) {
+    try {
+      const raw = fs.readFileSync(CONFIG_FILE_PATH, 'utf-8');
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object' && Array.isArray(parsed.products)) {
+        return {
+          version: parsed.version || '2.0',
+          settings: parsed.settings || DEFAULT_SITE_SETTINGS,
+          products: parsed.products || [],
+          categories: parsed.categories || [],
+          brands: parsed.brands || [],
+          reviews: parsed.reviews || [],
+          inquiries: parsed.inquiries || [],
+          powerRanges: parsed.powerRanges || ['1kW - 3kW', '3kW - 6kW', '6kW - 12kW', '12kW - 30kW', '30kW+'],
+          adminPasswordHash: parsed.adminPasswordHash || DEFAULT_ADMIN_HASH,
+          lastPublishedAt: parsed.lastPublishedAt || new Date().toISOString()
+        };
+      }
+    } catch (e) {
+      console.warn('Could not parse app-config.json, using defaults:', e);
+    }
+  }
+  return {
+    version: '2.0',
+    settings: DEFAULT_SITE_SETTINGS,
+    products: [],
+    categories: [],
+    brands: [],
+    reviews: [],
+    inquiries: [],
+    powerRanges: ['1kW - 3kW', '3kW - 6kW', '6kW - 12kW', '12kW - 30kW', '30kW+'],
+    adminPasswordHash: DEFAULT_ADMIN_HASH,
+    lastPublishedAt: new Date().toISOString()
+  };
+}
+
+let db: DatabaseStore = loadDatabaseFromDisk();
+
 function persistDatabaseToDisk(): void {
-  // Authoritative runtime store updated in memory
   db.lastPublishedAt = new Date().toISOString();
+  try {
+    fs.writeFileSync(CONFIG_FILE_PATH, JSON.stringify(db, null, 2), 'utf-8');
+  } catch (e) {
+    console.warn('Could not persist to app-config.json:', e);
+  }
 }
 
 // Authentication Middleware to Protect Admin Endpoints

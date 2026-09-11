@@ -6,7 +6,8 @@
  */
 
 import { BOT_UA_REGEX } from '../server-seo';
-import { INITIAL_PRODUCTS, STORE_CATEGORIES, DEFAULT_SITE_SETTINGS } from '../server/seedData';
+import { DEFAULT_SITE_SETTINGS } from '../src/lib/storage';
+import { ProductItem, ProductCategoryDef } from '../src/types';
 import { slugify, getProductSlug, findProductBySlug, findCategoryBySlug, SITE_FAQS, generateSchemaGraph } from '../src/utils/seo';
 
 interface PagesContext {
@@ -41,9 +42,9 @@ export async function onRequest(context: PagesContext): Promise<Response> {
     return next();
   }
 
-  // 4. Bot request: Fetch latest data (from D1 if configured, otherwise initial seed)
-  let products = INITIAL_PRODUCTS;
-  let categories = STORE_CATEGORIES;
+  // 4. Bot request: Fetch latest data directly from Cloudflare D1 database
+  let products: ProductItem[] = [];
+  let categories: ProductCategoryDef[] = [];
   let settings = DEFAULT_SITE_SETTINGS;
 
   if (env.DB) {
