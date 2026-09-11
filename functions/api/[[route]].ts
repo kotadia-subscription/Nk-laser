@@ -173,11 +173,88 @@ async function ensureD1Tables(env: Env): Promise<void> {
   if (!env.DB || d1TablesInitialized) return;
   try {
     await env.DB.batch([
-      env.DB.prepare(`CREATE TABLE IF NOT EXISTS config (
+      // 1. Relational Products Table
+      env.DB.prepare(`CREATE TABLE IF NOT EXISTS products (
+        id TEXT PRIMARY KEY,
+        guid TEXT,
+        sku TEXT,
+        title TEXT NOT NULL,
+        category TEXT,
+        category_slug TEXT NOT NULL,
+        sub_category TEXT,
+        material TEXT,
+        thickness TEXT,
+        dimensions TEXT,
+        image_url TEXT,
+        description TEXT,
+        brand TEXT,
+        power_range TEXT,
+        wavelength TEXT,
+        stock_status TEXT DEFAULT 'In Stock',
+        in_stock INTEGER DEFAULT 1,
+        is_popular INTEGER DEFAULT 0,
+        is_featured INTEGER DEFAULT 0,
+        estimated_price REAL DEFAULT 0,
+        regular_price REAL DEFAULT 0,
+        sale_price REAL DEFAULT 0,
+        moq INTEGER DEFAULT 1,
+        raw_json TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )`),
+      // 2. Relational Categories Table
+      env.DB.prepare(`CREATE TABLE IF NOT EXISTS categories (
+        id TEXT PRIMARY KEY,
+        slug TEXT UNIQUE NOT NULL,
+        name TEXT NOT NULL,
+        short_title TEXT,
+        description TEXT,
+        icon_name TEXT,
+        image_url TEXT,
+        default_material TEXT,
+        default_power TEXT,
+        item_count INTEGER DEFAULT 0,
+        featured INTEGER DEFAULT 1,
+        show_on_home INTEGER DEFAULT 1,
+        sub_categories_json TEXT,
+        oem_brands_json TEXT,
+        power_ranges_json TEXT,
+        raw_json TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )`),
+      // 3. Relational Brands Table
+      env.DB.prepare(`CREATE TABLE IF NOT EXISTS brands (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        logo_url TEXT,
+        description TEXT,
+        series_json TEXT,
+        raw_json TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )`),
+      // 4. Relational Settings Table
+      env.DB.prepare(`CREATE TABLE IF NOT EXISTS settings (
         key TEXT PRIMARY KEY,
         value TEXT NOT NULL,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )`),
+      // 5. Relational Reviews Table
+      env.DB.prepare(`CREATE TABLE IF NOT EXISTS reviews (
+        id TEXT PRIMARY KEY,
+        author TEXT,
+        company TEXT,
+        location TEXT,
+        rating INTEGER DEFAULT 5,
+        comment TEXT,
+        project_type TEXT,
+        status TEXT DEFAULT 'approved',
+        verified INTEGER DEFAULT 1,
+        data TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )`),
+      // 6. Relational Inquiries Table
       env.DB.prepare(`CREATE TABLE IF NOT EXISTS inquiries (
         id TEXT PRIMARY KEY,
         customer_name TEXT,
@@ -192,25 +269,33 @@ async function ensureD1Tables(env: Env): Promise<void> {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )`),
-      env.DB.prepare(`CREATE TABLE IF NOT EXISTS reviews (
-        id TEXT PRIMARY KEY,
-        author TEXT,
-        rating INTEGER DEFAULT 5,
-        comment TEXT,
-        project_type TEXT,
-        status TEXT DEFAULT 'approved',
-        data TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )`),
+      // 7. Sessions Table
       env.DB.prepare(`CREATE TABLE IF NOT EXISTS sessions (
         token TEXT PRIMARY KEY,
         data TEXT NOT NULL,
         expires_at INTEGER NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )`),
+      // 8. Config / System Cache Table
+      env.DB.prepare(`CREATE TABLE IF NOT EXISTS config (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )`)
     ]);
+
+    // Create Indexes
+    await env.DB.batch([
+      env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_products_sku ON products(sku)'),
+      env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_products_category_slug ON products(category_slug)'),
+      env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_products_brand ON products(brand)'),
+      env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_categories_slug ON categories(slug)'),
+      env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_reviews_status ON reviews(status)'),
+      env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_inquiries_status ON inquiries(status)')
+    ]);
+
     d1TablesInitialized = true;
-    logCloudflare('D1_QUERY', 'Cloudflare D1 tables initialized and verified.');
+    logCloudflare('D1_QUERY', 'Cloudflare D1 relational tables initialized and verified.');
   } catch (e: any) {
     logCloudflare('ERROR', `D1 auto-table bootstrap warning: ${e?.message || e}`);
   }
@@ -228,40 +313,124 @@ async function loadFullConfig(env: Env) {
 
   if (env.DB) {
     try {
-      logCloudflare('D1_QUERY', 'Executing SELECT key, value FROM config on Cloudflare D1...');
-      const rows = await env.DB.prepare('SELECT key, value FROM config').all();
-      if (rows && rows.results && rows.results.length > 0) {
-        for (const row of rows.results) {
-          try {
-            if (row.key === 'settings') settings = JSON.parse(row.value);
-            if (row.key === 'products') products = JSON.parse(row.value);
-            if (row.key === 'categories') categories = JSON.parse(row.value);
-            if (row.key === 'brands') brands = JSON.parse(row.value);
-            if (row.key === 'powerRanges') powerRanges = JSON.parse(row.value);
-            if (row.key === 'reviews') reviews = JSON.parse(row.value);
-            if (row.key === 'lastPublishedAt') lastPublishedAt = row.value;
-          } catch (parseErr: any) {
-            logCloudflare('ERROR', `Error parsing JSON for config key "${row.key}": ${parseErr?.message || parseErr}`);
+      logCloudflare('D1_QUERY', 'Loading data from Cloudflare D1 relational tables...');
+      
+      // 1. Check products table first
+      let loadedFromRelational = false;
+      try {
+        const prodRows = await env.DB.prepare('SELECT raw_json FROM products ORDER BY id ASC').all();
+        if (prodRows && prodRows.results && prodRows.results.length > 0) {
+          products = prodRows.results.map((r: any) => JSON.parse(r.raw_json));
+          loadedFromRelational = true;
+        }
+      } catch (err: any) {
+        logCloudflare('INFO', `Products table query: ${err?.message || err}`);
+      }
+
+      // 2. Load categories from categories table
+      if (loadedFromRelational) {
+        try {
+          const catRows = await env.DB.prepare('SELECT raw_json FROM categories ORDER BY id ASC').all();
+          if (catRows && catRows.results && catRows.results.length > 0) {
+            categories = catRows.results.map((r: any) => JSON.parse(r.raw_json));
+          }
+        } catch (err: any) {
+          logCloudflare('INFO', `Categories table query: ${err?.message || err}`);
+        }
+
+        // 3. Load brands from brands table
+        try {
+          const brandRows = await env.DB.prepare('SELECT raw_json FROM brands ORDER BY id ASC').all();
+          if (brandRows && brandRows.results && brandRows.results.length > 0) {
+            brands = brandRows.results.map((r: any) => JSON.parse(r.raw_json));
+          }
+        } catch (err: any) {
+          logCloudflare('INFO', `Brands table query: ${err?.message || err}`);
+        }
+
+        // 4. Load settings from settings table
+        try {
+          const settingsRows = await env.DB.prepare('SELECT key, value FROM settings').all();
+          if (settingsRows && settingsRows.results && settingsRows.results.length > 0) {
+            const fullSettingsRow = settingsRows.results.find((r: any) => r.key === '_full_settings');
+            if (fullSettingsRow && fullSettingsRow.value) {
+              settings = JSON.parse(fullSettingsRow.value);
+            } else {
+              const assembled: Record<string, any> = { ...DEFAULT_SITE_SETTINGS };
+              for (const row of settingsRows.results) {
+                if (row.key === '_full_settings') continue;
+                try {
+                  assembled[row.key] = JSON.parse(row.value);
+                } catch {
+                  assembled[row.key] = row.value;
+                }
+              }
+              settings = assembled as SiteSettings;
+            }
+          }
+        } catch (err: any) {
+          logCloudflare('INFO', `Settings table query: ${err?.message || err}`);
+        }
+
+        // 5. Load reviews from reviews table
+        try {
+          const reviewRows = await env.DB.prepare('SELECT data, id, author, company, location, rating, comment, project_type, status, verified, created_at FROM reviews ORDER BY created_at DESC').all();
+          if (reviewRows && reviewRows.results && reviewRows.results.length > 0) {
+            reviews = reviewRows.results.map((r: any) => {
+              if (r.data) {
+                try { return JSON.parse(r.data); } catch {}
+              }
+              return {
+                id: r.id,
+                clientName: r.author || 'Verified Buyer',
+                companyName: r.company || '',
+                location: r.location || '',
+                rating: r.rating || 5,
+                comment: r.comment || '',
+                date: r.created_at || new Date().toISOString().split('T')[0],
+                projectType: r.project_type || '',
+                verified: Boolean(r.verified),
+                status: r.status || 'approved'
+              } as ReviewItem;
+            });
+          }
+        } catch (err: any) {
+          logCloudflare('INFO', `Reviews table query: ${err?.message || err}`);
+        }
+
+        // 6. Load metadata from config table
+        try {
+          const metaRows = await env.DB.prepare('SELECT key, value FROM config WHERE key IN ("lastPublishedAt", "powerRanges")').all();
+          if (metaRows && metaRows.results) {
+            for (const row of metaRows.results) {
+              if (row.key === 'lastPublishedAt') lastPublishedAt = row.value;
+              if (row.key === 'powerRanges') {
+                try { powerRanges = JSON.parse(row.value); } catch {}
+              }
+            }
+          }
+        } catch {}
+
+        logCloudflare('D1_QUERY', `Loaded catalog from Cloudflare D1 Relational Tables: ${products.length} products, ${categories.length} categories, ${brands.length} brands, ${reviews.length} reviews`);
+      } else {
+        // Fallback: Check legacy config table
+        logCloudflare('D1_QUERY', 'Products table empty; checking fallback config table on Cloudflare D1...');
+        const rows = await env.DB.prepare('SELECT key, value FROM config').all();
+        if (rows && rows.results && rows.results.length > 0) {
+          for (const row of rows.results) {
+            try {
+              if (row.key === 'settings') settings = JSON.parse(row.value);
+              if (row.key === 'products') products = JSON.parse(row.value);
+              if (row.key === 'categories') categories = JSON.parse(row.value);
+              if (row.key === 'brands') brands = JSON.parse(row.value);
+              if (row.key === 'powerRanges') powerRanges = JSON.parse(row.value);
+              if (row.key === 'reviews') reviews = JSON.parse(row.value);
+              if (row.key === 'lastPublishedAt') lastPublishedAt = row.value;
+            } catch (parseErr: any) {
+              logCloudflare('ERROR', `Error parsing JSON for config key "${row.key}": ${parseErr?.message || parseErr}`);
+            }
           }
         }
-        logCloudflare('D1_QUERY', `Successfully loaded config from Cloudflare D1 (${rows.results.length} keys)`, {
-          productsCount: products.length,
-          categoriesCount: categories.length,
-          brandsCount: brands.length,
-          reviewsCount: reviews.length,
-          lastPublishedAt
-        });
-      } else {
-        logCloudflare('D1_INSERT', 'Cloudflare D1 config table empty on first run. Seeding initial defaults into D1...');
-        await saveFullConfig(env, {
-          settings,
-          products,
-          categories,
-          brands,
-          powerRanges,
-          reviews,
-          lastPublishedAt
-        });
       }
     } catch (err: any) {
       logCloudflare('ERROR', `Could not read from D1, using fallback: ${err?.message || err}`);
@@ -287,7 +456,7 @@ async function loadFullConfig(env: Env) {
 async function saveFullConfig(env: Env, configData: any): Promise<string> {
   const publishedAt = new Date().toISOString();
   
-  logCloudflare('D1_BATCH', 'Preparing D1 batch save for master configuration...', {
+  logCloudflare('D1_BATCH', 'Preparing D1 relational save for master configuration...', {
     hasSettings: Boolean(configData.settings),
     productsCount: Array.isArray(configData.products) ? configData.products.length : undefined,
     categoriesCount: Array.isArray(configData.categories) ? configData.categories.length : undefined,
@@ -298,44 +467,122 @@ async function saveFullConfig(env: Env, configData: any): Promise<string> {
   });
 
   if (env.DB) {
-    const statements = [];
-    if (configData.settings) {
-      statements.push(env.DB.prepare(
-        'INSERT OR REPLACE INTO config (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)'
-      ).bind('settings', JSON.stringify(configData.settings)));
-    }
-    if (Array.isArray(configData.products)) {
-      statements.push(env.DB.prepare(
-        'INSERT OR REPLACE INTO config (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)'
-      ).bind('products', JSON.stringify(configData.products)));
-    }
-    if (Array.isArray(configData.categories)) {
-      statements.push(env.DB.prepare(
-        'INSERT OR REPLACE INTO config (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)'
-      ).bind('categories', JSON.stringify(configData.categories)));
-    }
-    if (Array.isArray(configData.brands)) {
-      statements.push(env.DB.prepare(
-        'INSERT OR REPLACE INTO config (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)'
-      ).bind('brands', JSON.stringify(configData.brands)));
-    }
-    if (Array.isArray(configData.powerRanges)) {
-      statements.push(env.DB.prepare(
-        'INSERT OR REPLACE INTO config (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)'
-      ).bind('powerRanges', JSON.stringify(configData.powerRanges)));
-    }
-    if (Array.isArray(configData.reviews)) {
-      statements.push(env.DB.prepare(
-        'INSERT OR REPLACE INTO config (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)'
-      ).bind('reviews', JSON.stringify(configData.reviews)));
-    }
-    statements.push(env.DB.prepare(
-      'INSERT OR REPLACE INTO config (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)'
-    ).bind('lastPublishedAt', publishedAt));
-
     try {
-      await env.DB.batch(statements);
-      logCloudflare('D1_INSERT', `Cloudflare D1 batch write SUCCESS: ${statements.length} keys committed permanently to D1.`, {
+      // 1. Save Settings to settings table
+      if (configData.settings) {
+        const settingStatements = [];
+        settingStatements.push(env.DB.prepare(
+          'INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)'
+        ).bind('_full_settings', JSON.stringify(configData.settings)));
+
+        for (const [k, v] of Object.entries(configData.settings)) {
+          const valStr = typeof v === 'object' ? JSON.stringify(v) : String(v);
+          settingStatements.push(env.DB.prepare(
+            'INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)'
+          ).bind(k, valStr));
+        }
+        await env.DB.batch(settingStatements);
+      }
+
+      // 2. Save Categories to categories table
+      if (Array.isArray(configData.categories) && configData.categories.length > 0) {
+        const catStatements = configData.categories.map((c: ProductCategoryDef) => {
+          return env.DB.prepare(`
+            INSERT OR REPLACE INTO categories (
+              id, slug, name, short_title, description, icon_name, image_url,
+              default_material, default_power, item_count, featured, show_on_home,
+              sub_categories_json, oem_brands_json, power_ranges_json, raw_json, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+          `).bind(
+            c.id, c.slug, c.name, c.shortTitle || '', c.description || '', c.iconName || '', c.imageUrl || '',
+            c.defaultMaterial || '', c.defaultPower || '', c.itemCount || 0,
+            c.featured !== false ? 1 : 0, c.showOnHome !== false ? 1 : 0,
+            JSON.stringify(c.subCategories || []), JSON.stringify(c.oemBrands || []),
+            JSON.stringify(c.powerRanges || []), JSON.stringify(c)
+          );
+        });
+        await env.DB.batch(catStatements);
+      }
+
+      // 3. Save Brands to brands table
+      if (Array.isArray(configData.brands) && configData.brands.length > 0) {
+        const brandStatements = configData.brands.map((b: BrandItem) => {
+          const series = (b as any).seriesList || (b as any).series || [];
+          return env.DB.prepare(`
+            INSERT OR REPLACE INTO brands (
+              id, name, logo_url, description, series_json, raw_json, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+          `).bind(
+            b.id, b.name, b.logoUrl || '', b.description || '', JSON.stringify(series), JSON.stringify(b)
+          );
+        });
+        await env.DB.batch(brandStatements);
+      }
+
+      // 4. Save Products to products table (in safe chunks of 50 to avoid any D1 statement limits)
+      if (Array.isArray(configData.products) && configData.products.length > 0) {
+        const CHUNK_SIZE = 50;
+        for (let i = 0; i < configData.products.length; i += CHUNK_SIZE) {
+          const chunk = configData.products.slice(i, i + CHUNK_SIZE);
+          const prodStatements = chunk.map((p: ProductItem) => {
+            return env.DB.prepare(`
+              INSERT OR REPLACE INTO products (
+                id, guid, sku, title, category, category_slug, sub_category, material,
+                thickness, dimensions, image_url, description, brand, power_range, wavelength,
+                stock_status, in_stock, is_popular, is_featured, estimated_price, regular_price,
+                sale_price, moq, raw_json, updated_at
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+            `).bind(
+              p.id, p.guid || p.id, p.sku || '', p.title, p.category || '', p.categorySlug || p.category || '',
+              p.subCategory || '', p.material || '', p.thickness || '', p.dimensions || '', p.imageUrl || '',
+              p.description || '', p.brand || '', p.powerRange || '', p.wavelength || '',
+              p.stockStatus || 'In Stock', p.inStock !== false ? 1 : 0, p.isPopular ? 1 : 0, p.isFeatured ? 1 : 0,
+              p.estimatedPrice || 0, p.regularPrice || 0, p.salePrice || 0, p.moq || 1, JSON.stringify(p)
+            );
+          });
+          await env.DB.batch(prodStatements);
+        }
+      }
+
+      // 5. Save Reviews to reviews table
+      if (Array.isArray(configData.reviews) && configData.reviews.length > 0) {
+        const CHUNK_SIZE = 50;
+        for (let i = 0; i < configData.reviews.length; i += CHUNK_SIZE) {
+          const chunk = configData.reviews.slice(i, i + CHUNK_SIZE);
+          const reviewStatements = chunk.map((r: ReviewItem) => {
+            const author = (r as any).clientName || (r as any).author || 'Verified Buyer';
+            const company = (r as any).companyName || (r as any).company || '';
+            const status = (r as any).status || 'approved';
+            return env.DB.prepare(`
+              INSERT OR REPLACE INTO reviews (
+                id, author, company, location, rating, comment, project_type, status, verified, data
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `).bind(
+              r.id, author, company, r.location || '', r.rating || 5,
+              r.comment || '', r.projectType || '', status, r.verified !== false ? 1 : 0,
+              JSON.stringify(r)
+            );
+          });
+          await env.DB.batch(reviewStatements);
+        }
+      }
+
+      // 6. Save metadata to config table
+      const metaStatements = [
+        env.DB.prepare('INSERT OR REPLACE INTO config (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)')
+          .bind('lastPublishedAt', publishedAt),
+        env.DB.prepare('INSERT OR REPLACE INTO config (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)')
+          .bind('version', '2.0')
+      ];
+      if (Array.isArray(configData.powerRanges)) {
+        metaStatements.push(
+          env.DB.prepare('INSERT OR REPLACE INTO config (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)')
+            .bind('powerRanges', JSON.stringify(configData.powerRanges))
+        );
+      }
+      await env.DB.batch(metaStatements);
+
+      logCloudflare('D1_INSERT', `Cloudflare D1 relational save SUCCESS: committed permanently to D1.`, {
         publishedAt,
         productsCount: configData.products?.length,
         categoriesCount: configData.categories?.length

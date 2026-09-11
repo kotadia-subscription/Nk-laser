@@ -185,37 +185,45 @@ export const Navbar: React.FC<NavbarProps> = ({
     <header 
       className={`sticky top-0 z-50 transition-all duration-300 border-b ${
         isScrolled 
-          ? 'bg-white/95 dark:bg-slate-900/95 backdrop-blur-md shadow-[0_14px_36px_-6px_rgba(22,38,87,0.18),0_4px_14px_-2px_rgba(0,0,0,0.08)] border-slate-300 dark:border-slate-700' 
-          : 'bg-white/95 dark:bg-slate-900/95 backdrop-blur-md shadow-[0_8px_26px_-4px_rgba(22,38,87,0.12),0_2px_8px_-1px_rgba(0,0,0,0.05)] border-slate-200/90 dark:border-slate-800'
+          ? 'bg-white/98 dark:bg-slate-950/98 backdrop-blur-xl shadow-[0_16px_40px_-8px_rgba(22,38,87,0.22),0_4px_16px_-2px_rgba(0,0,0,0.1)] border-slate-300/90 dark:border-slate-800' 
+          : 'bg-white/95 dark:bg-slate-950/95 backdrop-blur-xl shadow-[0_10px_30px_-6px_rgba(22,38,87,0.16),0_2px_10px_-1px_rgba(0,0,0,0.06)] border-slate-200 dark:border-slate-800'
       } text-[var(--text-primary)]`}
       onMouseLeave={handleMouseLeave}
     >
-      {/* Top Precision Laser Glow Strip */}
+      {/* Top Precision Laser Glow Strip with dynamic pulse shimmer */}
       <div 
-        className="h-[3.5px] w-full relative z-20 shadow-[0_1px_8px_rgba(22,38,87,0.25)]" 
+        className="h-[3.5px] w-full relative z-30 shadow-[0_2px_12px_rgba(229,16,36,0.35)] overflow-hidden" 
         style={{ 
-          background: 'linear-gradient(90deg, var(--primary) 0%, var(--accent) 35%, #F59E0B 50%, var(--accent) 65%, var(--primary) 100%)' 
+          background: 'linear-gradient(90deg, var(--primary) 0%, var(--accent) 30%, #F59E0B 50%, var(--accent) 70%, var(--primary) 100%)' 
         }} 
-      />
+      >
+        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent animate-pulse pointer-events-none" />
+      </div>
 
       {/* Top Internal Specular Gloss Sheen */}
-      <div className="absolute inset-x-0 top-[3.5px] h-5 bg-gradient-to-b from-white/70 dark:from-white/5 to-transparent pointer-events-none" />
+      <div className="absolute inset-x-0 top-[3.5px] h-6 bg-gradient-to-b from-white/80 dark:from-white/10 to-transparent pointer-events-none" />
 
-      {/* Bottom Laser Beam Glare / Highlight line separating header from main content */}
+      {/* Optical Lens Ambient Glare Highlights in header background */}
+      <div className="absolute top-0 left-1/4 w-96 h-full bg-[radial-gradient(ellipse_at_top,rgba(22,38,87,0.045),transparent_70%)] pointer-events-none" />
+      <div className="absolute top-0 right-1/4 w-96 h-full bg-[radial-gradient(ellipse_at_top,rgba(229,16,36,0.035),transparent_70%)] pointer-events-none" />
+
+      {/* Vivid Laser Beam Glare / Highlighting Line separating Header from Main Content */}
       <div 
-        className="absolute inset-x-0 -bottom-[1px] h-[1.5px] z-20 pointer-events-none transition-opacity duration-300"
+        className="absolute inset-x-0 -bottom-[1.5px] h-[2.5px] z-30 pointer-events-none transition-all duration-300"
         style={{
-          background: 'linear-gradient(90deg, transparent 3%, var(--primary) 22%, var(--accent) 50%, #F59E0B 68%, var(--primary) 82%, transparent 97%)',
-          opacity: isScrolled ? 0.95 : 0.75
+          background: 'linear-gradient(90deg, transparent 2%, var(--primary) 18%, var(--accent) 45%, #F59E0B 55%, var(--accent) 65%, var(--primary) 85%, transparent 98%)',
+          boxShadow: isScrolled 
+            ? '0 2px 10px rgba(229, 16, 36, 0.45), 0 0 16px rgba(245, 158, 11, 0.3)' 
+            : '0 1px 8px rgba(229, 16, 36, 0.35), 0 0 12px rgba(22, 38, 87, 0.2)'
         }}
       />
 
-      {/* Ambient Drop Glow (soft laser radiance extending down onto main content) */}
+      {/* Downward Optical Radiant Glow projecting onto the main content */}
       <div 
-        className="absolute inset-x-0 -bottom-3.5 h-3.5 pointer-events-none transition-opacity duration-300 z-10"
+        className="absolute inset-x-0 -bottom-5 h-5 pointer-events-none transition-opacity duration-300 z-20"
         style={{
-          background: 'linear-gradient(180deg, rgba(22, 38, 87, 0.09) 0%, rgba(22, 38, 87, 0.02) 65%, transparent 100%)',
-          opacity: isScrolled ? 1 : 0.75
+          background: 'linear-gradient(180deg, rgba(22, 38, 87, 0.12) 0%, rgba(229, 16, 36, 0.04) 40%, transparent 100%)',
+          opacity: isScrolled ? 1 : 0.85
         }}
       />
 

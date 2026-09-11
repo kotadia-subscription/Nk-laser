@@ -71,17 +71,17 @@ npx wrangler secret put GEMINI_API_KEY --config wrangler.worker.toml
 
 ### Real-Time Live Synchronization Across All Devices
 When you make changes in the Admin Console (e.g. updating product pricing, stock status, categories, or site contact information) and click **Publish**:
-1. The changes are sent via `/api/admin/publish` directly into the remote Cloudflare D1 database and stored permanently in the `config` table.
+1. The changes are sent via `/api/admin/publish` directly into the remote Cloudflare D1 database and stored permanently in the dedicated relational tables (`products`, `categories`, `brands`, `settings`, `reviews`, `config`).
 2. A new `lastPublishedAt` ISO timestamp is recorded in D1.
 3. Every open client tab or mobile device running your site polls `/api/version` every 12 seconds in the background (a tiny ~50-byte lightweight check with zero DB overhead).
 4. When a new `lastPublishedAt` timestamp is detected, the client automatically synchronizes with `/api/config` and re-renders the latest catalog data seamlessly.
 5. In the same browser across multiple open tabs, a native `BroadcastChannel('nk_laser_realtime_sync')` instantly updates other open tabs in 0ms!
 6. **No manual browser reload is required by your visitors or customers** — updates appear automatically everywhere.
 
-### Static Data (`src/data`) vs Cloudflare D1 Database
-- `src/data/` contains default fallback seed data used only during initial offline build or brand-new database bootstrapping.
-- **Cloudflare D1 is the single source of truth**: As soon as your site connects to D1, all catalog reads, search filters, and updates are served dynamically from D1.
-- Editing files in `src/data/` is no longer needed to update your live website; you can manage everything directly through the Admin Console (`/?admin=true`) or by synchronizing D1.
+### Static Data (`src/data`) vs Cloudflare D1 Relational Database
+- **Cloudflare D1 is the authoritative single source of truth**: As soon as your site connects to D1, all catalog reads, search filters, and updates are served dynamically from the D1 relational database.
+- Initial seed data is injected via `d1-seed.sql` using `npm run db:seed`.
+- You can manage everything directly through the Admin Console (`/?admin=true`) or by synchronizing D1.
 
 ### Future Database Schema Changes & Automated Migration
 When you want to add new columns, tables, or database indexes in the future:
@@ -91,13 +91,17 @@ When you want to add new columns, tables, or database indexes in the future:
    # or:
    npx wrangler d1 execute nk-laser-db --file=./d1-schema.sql --remote
    ```
-2. Inject/seed the full master catalog into Cloudflare D1:
+2. If you updated `app-config.json` locally and want to regenerate the seed script:
+   ```bash
+   npm run db:seed:generate
+   ```
+3. Inject/seed the full relational catalog into Cloudflare D1:
    ```bash
    npm run db:seed
    # or:
    npx wrangler d1 execute nk-laser-db --file=./d1-seed.sql --remote
    ```
-3. Because the master catalog data is stored using a document store inside D1's `config` table, you can also add any new product attributes (like custom specs, OEM part numbers, or material compatibility) directly without requiring any SQL schema migration!
+4. All SQL statements are generated atomically and bounded (under 1MB SQLite limits), completely preventing `SQLITE_TOOBIG` errors. Additionally, edge functions batch inserts in chunks of 50 items.
 
 ### Automated GitHub CI/CD Deployment with Cloudflare D1
 The repository includes a complete GitHub Actions workflow at `.github/workflows/deploy.yml`.

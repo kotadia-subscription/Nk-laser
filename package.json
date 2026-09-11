@@ -10,6 +10,7 @@
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit",
     "db:init": "wrangler d1 execute nk-laser-db --file=./d1-schema.sql --remote",
+    "db:seed:generate": "node scripts/generate-d1-seed.cjs",
     "db:seed": "wrangler d1 execute nk-laser-db --file=./d1-seed.sql --remote",
     "db:seed:local": "wrangler d1 execute nk-laser-db --file=./d1-seed.sql --local",
     "db:sync": "wrangler d1 execute nk-laser-db --file=./d1-schema.sql --remote",

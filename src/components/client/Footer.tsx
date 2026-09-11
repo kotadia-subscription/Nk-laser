@@ -115,54 +115,6 @@ export const Footer: React.FC<FooterProps> = ({
         className="absolute top-0 right-1/4 w-80 h-32 bg-[radial-gradient(circle_80px_at_center,rgba(229,16,36,0.035),transparent)] pointer-events-none" 
       />
 
-      {/* Top Urgent RFQ & Fitment Assistance Banner */}
-      <div className="relative z-10 bg-gradient-to-r from-slate-50 via-blue-50/40 to-slate-50 py-6 border-b border-slate-200/90">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col lg:flex-row items-center justify-between gap-5">
-          <div className="text-center lg:text-left space-y-1.5">
-            <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[10.5px] font-bold bg-blue-100/90 text-blue-900 border border-blue-200/90 shadow-2xs">
-              <Sparkles className="w-3 h-3 text-amber-500" />
-              <span>SAME-DAY DISPATCH & OEM FITMENT ASSISTANCE</span>
-            </div>
-            <h3 className="text-base sm:text-lg font-black text-slate-900 tracking-tight">
-              Need Help Finding the Exact Laser Spare Part or Lens Size?
-            </h3>
-            <p className="text-slate-600 text-xs max-w-2xl leading-relaxed">
-              Send us your cutting head model (RayTools, OSPRI, WSX, BOCHU, Precitec), nozzle orifice, or lens dimensions for instant stock confirmation and wholesale quotation.
-            </p>
-          </div>
-
-          <div className="flex flex-wrap items-center justify-center gap-2.5 shrink-0">
-            <a
-              href={`tel:${phoneRaw}`}
-              className="px-3.5 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-800 font-bold text-xs flex items-center gap-2 border border-slate-200 transition-all shadow-2xs hover:border-slate-300"
-              title={`Call ${phoneDisplay}`}
-            >
-              <PhoneCall className="w-3.5 h-3.5 text-blue-900" />
-              <span>Call: {phoneDisplay}</span>
-            </a>
-
-            <a
-              href={whatsappUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-2 transition-all shadow-xs hover:shadow"
-              title="Chat on WhatsApp"
-            >
-              <WhatsAppIcon className="w-3.5 h-3.5 text-white" />
-              <span>WhatsApp Inquiry</span>
-            </a>
-
-            <button
-              onClick={onOpenQuoteTool}
-              className="btn-primary px-4 py-2 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-xs"
-            >
-              <span>Explore Catalog</span>
-              <ChevronRight className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        </div>
-      </div>
-
       {/* Main Footer Content Grid: 4-Column Layout */}
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-12 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-8">
         
@@ -394,97 +346,26 @@ export const Footer: React.FC<FooterProps> = ({
             </div>
           </div>
 
-          {/* Integrated Warehouse & Dispatch Facilities */}
-          {resolvedAddresses.length > 0 && (
-            <div className="pt-2 border-t border-slate-200 space-y-2.5">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5">
-                  <Building2 className="w-3.5 h-3.5 text-blue-900" />
-                  <h5 className="font-extrabold text-[var(--primary,#162657)] uppercase tracking-wider font-mono text-[11px]">
-                    Warehouses & Dispatch Hubs ({resolvedAddresses.length})
-                  </h5>
+          {/* Quick Navigation to Full Contact Page */}
+          <div className="pt-2 border-t border-slate-200">
+            <button
+              onClick={() => onNavigatePage ? onNavigatePage('contact') : undefined}
+              className="w-full p-2.5 rounded-xl bg-slate-50 hover:bg-blue-50/50 border border-slate-200 hover:border-blue-200 text-left transition-all flex items-center justify-between group cursor-pointer"
+            >
+              <div className="flex items-center gap-2">
+                <Building2 className="w-4 h-4 text-blue-900 shrink-0" />
+                <div>
+                  <span className="block text-xs font-bold text-slate-900 group-hover:text-blue-900">
+                    Workshop & Dispatch Hubs
+                  </span>
+                  <span className="block text-[10px] text-slate-500">
+                    {resolvedAddresses.length > 0 ? `${resolvedAddresses.length} locations across India` : 'Central Warehouse & Hubs'} • View Full Contact & Map
+                  </span>
                 </div>
-                <span className="text-[9.5px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded">
-                  Same-Day Dispatch
-                </span>
               </div>
-
-              {/* Address Cards List */}
-              <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
-                {resolvedAddresses.map((addr) => (
-                  <div 
-                    key={addr.id}
-                    className={`p-2.5 rounded-xl border text-xs transition-all ${
-                      addr.isPrimary 
-                        ? 'bg-blue-50/40 border-blue-200 shadow-2xs' 
-                        : 'bg-slate-50/80 border-slate-200/80 hover:border-slate-300'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between gap-1 mb-1">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="font-black text-slate-900 text-[11.5px] leading-tight">
-                          {addr.title}
-                        </span>
-                        {addr.isPrimary && (
-                          <span className="inline-flex items-center gap-0.5 text-[8.5px] font-black px-1.5 py-0.2 rounded-full bg-blue-900 text-white">
-                            <Star className="w-2 h-2 fill-current" />
-                            <span>HQ</span>
-                          </span>
-                        )}
-                      </div>
-                      {addr.mapUrl && (
-                        <a 
-                          href={addr.mapUrl} 
-                          target="_blank" 
-                          rel="noopener noreferrer" 
-                          className="inline-flex items-center gap-1 text-[10px] text-blue-900 hover:text-blue-700 font-bold hover:underline shrink-0"
-                          title="View on Google Maps"
-                        >
-                          <Navigation className="w-2.5 h-2.5" />
-                          <span>Map</span>
-                          <ExternalLink className="w-2 h-2" />
-                        </a>
-                      )}
-                    </div>
-
-                    <div className="flex flex-wrap items-center gap-1 mb-1">
-                      {addr.warehouseType && (
-                        <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-blue-100/70 text-blue-900 border border-blue-200/60">
-                          {addr.warehouseType}
-                        </span>
-                      )}
-                      {(addr.cityState || addr.pincode) && (
-                        <span className="text-[9px] font-medium text-slate-600 bg-white px-1.5 py-0.2 rounded border border-slate-200">
-                          {[addr.cityState, addr.pincode ? `PIN: ${addr.pincode}` : ''].filter(Boolean).join(' • ')}
-                        </span>
-                      )}
-                    </div>
-
-                    <p className="text-[11px] text-slate-700 leading-snug font-medium">
-                      {addr.addressLine}
-                    </p>
-
-                    {(addr.dispatchTiming || addr.workingHours) && (
-                      <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-1.5 pt-1 border-t border-slate-200/60 text-[10px] text-slate-500">
-                        {addr.dispatchTiming && (
-                          <span className="flex items-center gap-1 text-emerald-700 font-medium">
-                            <Truck className="w-2.5 h-2.5 text-emerald-600" />
-                            {addr.dispatchTiming}
-                          </span>
-                        )}
-                        {addr.workingHours && (
-                          <span className="flex items-center gap-1">
-                            <Clock className="w-2.5 h-2.5 text-slate-400" />
-                            {addr.workingHours}
-                          </span>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+              <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-blue-900 group-hover:translate-x-0.5 transition-all shrink-0" />
+            </button>
+          </div>
         </div>
 
       </div>
