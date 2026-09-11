@@ -85,12 +85,14 @@ export function StoreCatalogView({
   // Accordion Expand / Collapse states for each filter group
   const [expandedSections, setExpandedSections] = useState<{
     categories: boolean;
+    subcategories: boolean;
     brands: boolean;
     power: boolean;
     availability: boolean;
     help: boolean;
   }>({
     categories: true,
+    subcategories: true,
     brands: true,
     power: true,
     availability: true,
@@ -478,7 +480,10 @@ export function StoreCatalogView({
             return (
               <button
                 key={cat.id}
-                onClick={() => onSelectCategory(cat.slug)}
+                onClick={() => {
+                  onSelectCategory(cat.slug);
+                  setSelectedSubCategory('all');
+                }}
                 style={isSelected ? {
                   backgroundColor: 'var(--primary-color, #f59e0b)',
                   color: 'var(--primary-contrast, #09090b)',
@@ -510,6 +515,67 @@ export function StoreCatalogView({
             );
           })}
         </div>
+
+        {/* Subcategory Filter Pills (Shown when an active category has subcategories) */}
+        {activeSubCategories && activeSubCategories.length > 0 && (
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 pt-0.5 scrollbar-none">
+            <span className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider shrink-0 pr-1">Subcategory:</span>
+            <button
+              onClick={() => setSelectedSubCategory('all')}
+              style={selectedSubCategory === 'all' ? {
+                backgroundColor: 'rgba(var(--primary-rgb, 245, 158, 11), 0.15)',
+                color: 'var(--primary-color, #f59e0b)',
+                borderColor: 'var(--primary-color, #f59e0b)'
+              } : {}}
+              className={`px-3 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer border ${
+                selectedSubCategory === 'all'
+                  ? 'font-bold border-amber-500'
+                  : 'bg-white border-zinc-200 text-zinc-600 hover:bg-zinc-100'
+              }`}
+            >
+              All Types
+            </button>
+            {activeSubCategories.map((sub) => {
+              const isSelected = selectedSubCategory.toLowerCase() === sub.toLowerCase();
+              const subCount = products.filter(p => {
+                const matchesCat = selectedCategorySlug === 'all' || p.categorySlug === selectedCategorySlug;
+                const matchesSub = (p.subCategory && p.subCategory.toLowerCase() === sub.toLowerCase()) || p.title.toLowerCase().includes(sub.toLowerCase());
+                return matchesCat && matchesSub;
+              }).length;
+              return (
+                <button
+                  key={sub}
+                  onClick={() => setSelectedSubCategory(isSelected ? 'all' : sub)}
+                  style={isSelected ? {
+                    backgroundColor: 'var(--primary-color, #f59e0b)',
+                    color: 'var(--primary-contrast, #09090b)',
+                    borderColor: 'var(--primary-color, #f59e0b)'
+                  } : {}}
+                  className={`px-3 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer border flex items-center gap-1.5 ${
+                    isSelected
+                      ? 'font-bold shadow-2xs'
+                      : 'bg-white border-zinc-200 text-zinc-600 hover:bg-zinc-100'
+                  }`}
+                >
+                  <span>{sub}</span>
+                  {subCount > 0 && (
+                    <span 
+                      style={isSelected ? {
+                        backgroundColor: 'var(--primary-contrast-badge-bg, rgba(0,0,0,0.15))',
+                        color: 'var(--primary-contrast, #09090b)'
+                      } : {}}
+                      className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                        isSelected ? '' : 'bg-zinc-100 text-zinc-500'
+                      }`}
+                    >
+                      {subCount}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         {/* Main Store Layout (Sidebar + Product Grid) */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
@@ -637,6 +703,83 @@ export function StoreCatalogView({
                     </div>
                   )}
                 </div>
+
+                {/* 1b. Subcategory Filter Section (Collapsible Accordion) */}
+                {activeSubCategories && activeSubCategories.length > 0 && (
+                  <div className="border-b border-zinc-200/80 pb-3.5 space-y-2">
+                    <button
+                      onClick={() => toggleSection('subcategories')}
+                      className="w-full flex items-center justify-between py-1 text-left group cursor-pointer"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-extrabold uppercase tracking-wider text-zinc-400 group-hover:text-primary transition-colors">
+                          Subcategory
+                        </span>
+                        {selectedSubCategory !== 'all' && (
+                          <span 
+                            style={{ backgroundColor: 'rgba(var(--primary-rgb, 245, 158, 11), 0.15)', color: 'var(--primary-color, #f59e0b)', borderColor: 'rgba(var(--primary-rgb, 245, 158, 11), 0.3)' }}
+                            className="text-[10px] font-bold px-1.5 py-0.2 rounded border truncate max-w-[110px]"
+                          >
+                            {selectedSubCategory}
+                          </span>
+                        )}
+                      </div>
+                      <ChevronDown 
+                        style={{ color: expandedSections.subcategories ? 'var(--primary-color, #f59e0b)' : undefined }}
+                        className={`w-4 h-4 text-zinc-400 group-hover:text-primary transition-transform duration-200 ${
+                          expandedSections.subcategories ? 'rotate-180' : 'rotate-0'
+                        }`} 
+                      />
+                    </button>
+
+                    {expandedSections.subcategories && (
+                      <div className="space-y-1 text-xs pt-1 max-h-56 overflow-y-auto pr-1 animate-in fade-in duration-200">
+                        <button
+                          onClick={() => setSelectedSubCategory('all')}
+                          style={selectedSubCategory === 'all' ? {
+                            backgroundColor: 'rgba(var(--primary-rgb, 245, 158, 11), 0.14)',
+                            color: 'var(--primary-color, #f59e0b)',
+                            fontWeight: '700'
+                          } : {}}
+                          className={`w-full text-left px-2.5 py-1.5 rounded-lg flex items-center justify-between transition-colors cursor-pointer ${
+                            selectedSubCategory === 'all'
+                              ? ''
+                              : 'hover:bg-zinc-100 text-zinc-600'
+                          }`}
+                        >
+                          <span>All Subcategories</span>
+                        </button>
+                        {activeSubCategories.map(sub => {
+                          const isSel = selectedSubCategory.toLowerCase() === sub.toLowerCase();
+                          const subCount = products.filter(p => {
+                            const matchesCat = selectedCategorySlug === 'all' || p.categorySlug === selectedCategorySlug;
+                            const matchesSub = (p.subCategory && p.subCategory.toLowerCase() === sub.toLowerCase()) || p.title.toLowerCase().includes(sub.toLowerCase());
+                            return matchesCat && matchesSub;
+                          }).length;
+                          return (
+                            <button
+                              key={sub}
+                              onClick={() => setSelectedSubCategory(isSel ? 'all' : sub)}
+                              style={isSel ? {
+                                backgroundColor: 'rgba(var(--primary-rgb, 245, 158, 11), 0.14)',
+                                color: 'var(--primary-color, #f59e0b)',
+                                fontWeight: '700'
+                              } : {}}
+                              className={`w-full text-left px-2.5 py-1.5 rounded-lg flex items-center justify-between transition-colors cursor-pointer ${
+                                isSel
+                                  ? ''
+                                  : 'hover:bg-zinc-100 text-zinc-600'
+                              }`}
+                            >
+                              <span className="truncate">{sub}</span>
+                              <span className="font-mono text-[10px]">{subCount}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* 2. Brand Filter Section (Collapsible Accordion) */}
                 <div className="border-b border-zinc-200/80 pb-3.5 space-y-2">
@@ -1017,7 +1160,26 @@ export function StoreCatalogView({
                     className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold border"
                   >
                     <span>Category: {activeCategoryDef?.name}</span>
-                    <button onClick={() => onSelectCategory('all')} className="cursor-pointer hover:opacity-80"><X className="w-3 h-3" /></button>
+                    <button onClick={() => {
+                      onSelectCategory('all');
+                      setSelectedSubCategory('all');
+                    }} className="cursor-pointer hover:opacity-80"><X className="w-3 h-3" /></button>
+                  </span>
+                )}
+
+                {selectedSubCategory !== 'all' && (
+                  <span 
+                    style={{ 
+                      backgroundColor: 'rgba(var(--primary-rgb, 245, 158, 11), 0.15)', 
+                      color: 'var(--primary-color, #f59e0b)', 
+                      borderColor: 'rgba(var(--primary-rgb, 245, 158, 11), 0.3)' 
+                    }}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold border"
+                  >
+                    <span>Subcategory: {selectedSubCategory}</span>
+                    <button onClick={() => setSelectedSubCategory('all')} className="cursor-pointer hover:opacity-80">
+                      <X className="w-3 h-3" />
+                    </button>
                   </span>
                 )}
 
@@ -1164,6 +1326,61 @@ export function StoreCatalogView({
                     })}
                   </div>
                 </div>
+
+                {/* Mobile Subcategories */}
+                {activeSubCategories && activeSubCategories.length > 0 && (
+                  <div className="space-y-1.5 pt-2 border-t border-zinc-200">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-bold block text-zinc-400">Subcategory</label>
+                      {selectedSubCategory !== 'all' && (
+                        <button
+                          onClick={() => setSelectedSubCategory('all')}
+                          className="text-[10px] text-amber-500 font-bold hover:underline"
+                        >
+                          Clear
+                        </button>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap gap-1 max-h-36 overflow-y-auto">
+                      <button
+                        onClick={() => setSelectedSubCategory('all')}
+                        style={selectedSubCategory === 'all' ? {
+                          backgroundColor: 'var(--primary-color, #f59e0b)',
+                          color: 'var(--primary-contrast, #09090b)',
+                          borderColor: 'var(--primary-color, #f59e0b)'
+                        } : {}}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-semibold border cursor-pointer ${
+                          selectedSubCategory === 'all'
+                            ? 'font-bold shadow-2xs'
+                            : 'bg-zinc-100 border-zinc-200 text-zinc-700'
+                        }`}
+                      >
+                        All
+                      </button>
+                      {activeSubCategories.map(sub => {
+                        const isSel = selectedSubCategory.toLowerCase() === sub.toLowerCase();
+                        return (
+                          <button
+                            key={sub}
+                            onClick={() => setSelectedSubCategory(isSel ? 'all' : sub)}
+                            style={isSel ? {
+                              backgroundColor: 'var(--primary-color, #f59e0b)',
+                              color: 'var(--primary-contrast, #09090b)',
+                              borderColor: 'var(--primary-color, #f59e0b)'
+                            } : {}}
+                            className={`px-2.5 py-1 rounded-lg text-xs font-semibold border cursor-pointer ${
+                              isSel
+                                ? 'font-bold shadow-2xs'
+                                : 'bg-zinc-100 border-zinc-200 text-zinc-700'
+                            }`}
+                          >
+                            {sub}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
 
                 {/* Mobile Brands */}
                 <div className="space-y-1.5 pt-2 border-t border-zinc-200">
@@ -1564,6 +1781,7 @@ export function StoreCatalogView({
         activeFilters={{
           categorySlug: selectedCategorySlug,
           categoryName: activeCategoryDef?.name,
+          subCategory: selectedSubCategory,
           brand: selectedBrand,
           power: selectedPower,
           inStockOnly,

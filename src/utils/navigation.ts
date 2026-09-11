@@ -5,6 +5,7 @@ export interface UrlState {
   view: PageView;
   product: ProductItem | null;
   categorySlug: string;
+  subCategory?: string;
   brand: string;
   power: string;
   searchQuery: string;
@@ -20,6 +21,7 @@ export interface PartialUrlState {
   view?: PageView;
   product?: ProductItem | string | null;
   categorySlug?: string;
+  subCategory?: string;
   brand?: string;
   power?: string;
   searchQuery?: string;
@@ -116,6 +118,9 @@ export function parseUrlState(
     categorySlug = matchedCat ? matchedCat.slug : (decodedCat !== 'all' ? decodedCat : 'all');
   }
 
+  const subParam = params.get('sub') || params.get('subcategory');
+  const subCategory = subParam ? decodeURIComponent(subParam).trim() : undefined;
+
   const brandParam = params.get('brand');
   const brand = brandParam ? decodeURIComponent(brandParam).trim() : 'all';
 
@@ -170,6 +175,7 @@ export function parseUrlState(
     view,
     product,
     categorySlug,
+    subCategory,
     brand,
     power,
     searchQuery,
@@ -223,6 +229,7 @@ export function buildAppUrl(state: PartialUrlState): string {
   if (view === 'store') {
     const hasSpecialFilters = (state.brand && state.brand !== 'all') ||
       (state.power && state.power !== 'all') ||
+      (state.subCategory && state.subCategory !== 'all') ||
       (state.searchQuery && state.searchQuery.trim()) ||
       state.stockOnly ||
       (state.sortBy && state.sortBy !== 'popular') ||
@@ -237,6 +244,9 @@ export function buildAppUrl(state: PartialUrlState): string {
     const params = new URLSearchParams();
     if (state.categorySlug && state.categorySlug !== 'all') {
       params.set('cat', state.categorySlug);
+    }
+    if (state.subCategory && state.subCategory !== 'all') {
+      params.set('sub', state.subCategory);
     }
     if (state.brand && state.brand !== 'all') {
       params.set('brand', state.brand);

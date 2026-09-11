@@ -62,6 +62,7 @@ export default function App() {
   // Multi-page navigation state (defaults to home landing page)
   const [currentView, setCurrentView] = useState<PageView>('home');
   const [selectedCategorySlug, setSelectedCategorySlug] = useState<string>('all');
+  const [storeSubCategory, setStoreSubCategory] = useState<string>('all');
   const [selectedBrand, setSelectedBrand] = useState<string>('all');
   const [storeSearchQuery, setStoreSearchQuery] = useState<string>('');
   const [storePower, setStorePower] = useState<string>('all');
@@ -80,6 +81,7 @@ export default function App() {
     setCurrentView(parsed.view);
     setSelectedProduct(parsed.product);
     setSelectedCategorySlug(parsed.categorySlug);
+    setStoreSubCategory(parsed.subCategory || 'all');
     setSelectedBrand(parsed.brand);
     setStorePower(parsed.power);
     setStoreSearchQuery(parsed.searchQuery);
@@ -292,6 +294,7 @@ export default function App() {
       isAdminOpen: false,
       product: view === 'product-detail' ? selectedProduct : null,
       categorySlug: view === 'store' ? selectedCategorySlug : undefined,
+      subCategory: view === 'store' ? storeSubCategory : undefined,
       brand: view === 'store' ? selectedBrand : undefined,
       power: view === 'store' ? storePower : undefined,
       searchQuery: view === 'store' ? storeSearchQuery : undefined,
@@ -309,8 +312,9 @@ export default function App() {
     }
   };
 
-  const handleOpenStoreWithCategory = (categorySlug: string) => {
+  const handleOpenStoreWithCategory = (categorySlug: string, subCategory?: string) => {
     setSelectedCategorySlug(categorySlug);
+    setStoreSubCategory(subCategory || 'all');
     setSelectedBrand('all');
     setStoreSearchQuery('');
     setStorePower('all');
@@ -321,6 +325,7 @@ export default function App() {
     updateBrowserUrl({
       view: 'store',
       categorySlug,
+      subCategory: subCategory && subCategory !== 'all' ? subCategory : undefined,
       brand: 'all',
       searchQuery: '',
       power: 'all',
@@ -334,6 +339,7 @@ export default function App() {
 
   const handleOpenStoreWithBrand = (brandName: string) => {
     setSelectedCategorySlug('all');
+    setStoreSubCategory('all');
     setSelectedBrand(brandName);
     setStoreSearchQuery('');
     setStorePower('all');
@@ -344,6 +350,7 @@ export default function App() {
     updateBrowserUrl({
       view: 'store',
       categorySlug: 'all',
+      subCategory: undefined,
       brand: brandName,
       searchQuery: '',
       power: 'all',
@@ -355,10 +362,11 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleOpenStoreWithSubcategory = (subcategoryName: string) => {
-    setSelectedCategorySlug('all');
+  const handleOpenStoreWithSubcategory = (subcategoryName: string, categorySlug?: string) => {
+    setSelectedCategorySlug(categorySlug || 'all');
+    setStoreSubCategory(subcategoryName);
     setSelectedBrand('all');
-    setStoreSearchQuery(subcategoryName);
+    setStoreSearchQuery('');
     setStorePower('all');
     setSelectedProduct(null);
     setCurrentView('store');
@@ -366,9 +374,10 @@ export default function App() {
 
     updateBrowserUrl({
       view: 'store',
-      categorySlug: 'all',
+      categorySlug: categorySlug || 'all',
+      subCategory: subcategoryName,
       brand: 'all',
-      searchQuery: subcategoryName,
+      searchQuery: '',
       power: 'all',
       stockOnly: storeStockOnly,
       sortBy: storeSortBy,
@@ -594,8 +603,10 @@ export default function App() {
             initialPower={storePower}
             initialStockOnly={storeStockOnly}
             initialSortBy={storeSortBy}
+            initialSubCategory={storeSubCategory}
             onSelectCategory={(slug) => {
               setSelectedCategorySlug(slug);
+              setStoreSubCategory('all');
             }}
             onSelectBrand={(brand) => {
               setSelectedBrand(brand);

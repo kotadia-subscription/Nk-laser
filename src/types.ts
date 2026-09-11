@@ -177,7 +177,7 @@ export interface ProductItem {
   categorySlug?: StoreCategorySlug | string;
   subCategory?: string;
   material: MaterialType | string;
-  thickness: string;
+  thickness?: string;
   dimensions?: string;
   imageUrl: string;
   galleryImages?: string[];
