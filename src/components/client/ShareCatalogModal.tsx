@@ -27,6 +27,7 @@ interface ShareCatalogModalProps {
   activeFilters: {
     categorySlug: string;
     categoryName?: string;
+    subCategory?: string;
     brand: string;
     power: string;
     inStockOnly: boolean;
@@ -69,6 +70,9 @@ export const ShareCatalogModal: React.FC<ShareCatalogModalProps> = ({
     params.set('view', 'store');
     if (activeFilters.categorySlug && activeFilters.categorySlug !== 'all') {
       params.set('cat', activeFilters.categorySlug);
+    }
+    if (activeFilters.subCategory && activeFilters.subCategory !== 'all') {
+      params.set('sub', activeFilters.subCategory);
     }
     if (activeFilters.brand && activeFilters.brand !== 'all') {
       params.set('brand', activeFilters.brand);
@@ -284,6 +288,9 @@ export const ShareCatalogModal: React.FC<ShareCatalogModalProps> = ({
     if (activeFilters.categorySlug !== 'all') {
       msg += `• *Category:* ${activeFilters.categoryName || activeFilters.categorySlug}\n`;
     }
+    if (activeFilters.subCategory && activeFilters.subCategory !== 'all') {
+      msg += `• *Subcategory:* ${activeFilters.subCategory}\n`;
+    }
     if (activeFilters.brand !== 'all') {
       msg += `• *OEM Brand:* ${activeFilters.brand}\n`;
     }
@@ -483,6 +490,13 @@ export const ShareCatalogModal: React.FC<ShareCatalogModalProps> = ({
               ) : (
                 <span className="text-xs font-semibold px-2.5 py-1 rounded-xl bg-white border border-slate-200" style={{ color: 'var(--primary, #162657)' }}>
                   All Categories
+                </span>
+              )}
+
+              {activeFilters.subCategory && activeFilters.subCategory !== 'all' && (
+                <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-xl bg-white border border-slate-200 shadow-2xs">
+                  <span className="font-medium opacity-80" style={{ color: 'var(--primary, #162657)' }}>Subcategory:</span>
+                  <strong className="font-bold" style={{ color: 'var(--primary, #162657)' }}>{activeFilters.subCategory}</strong>
                 </span>
               )}
 

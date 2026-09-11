@@ -38,7 +38,7 @@ interface NavbarProps {
   onNavigatePage: (view: PageView) => void;
   onOpenInquiryModal?: () => void;
   onToggleTheme?: (mode: 'light' | 'dark') => void;
-  onOpenStoreWithCategory?: (category: string) => void;
+  onOpenStoreWithCategory?: (category: string, subCategory?: string) => void;
   onOpenStoreWithBrand?: (brand: string) => void;
   onSearchStore?: (query: string) => void;
   onOpenAdmin?: () => void;
@@ -158,10 +158,12 @@ export const Navbar: React.FC<NavbarProps> = ({
     }
   };
 
-  const handleSubCategorySelect = (subCategoryName: string) => {
+  const handleSubCategorySelect = (subCategoryName: string, categorySlug?: string) => {
     setHoveredMenu(null);
     setMobileMenuOpen(false);
-    if (onSearchStore) {
+    if (onOpenStoreWithCategory) {
+      onOpenStoreWithCategory(categorySlug || 'all', subCategoryName);
+    } else if (onSearchStore) {
       onSearchStore(subCategoryName);
     } else {
       onNavigatePage('store');
@@ -321,6 +323,27 @@ export const Navbar: React.FC<NavbarProps> = ({
                                 <p className="text-[10px] text-[var(--text-secondary)] truncate">
                                   {cat.description || (cat.subCategories && cat.subCategories.length > 0 ? cat.subCategories.slice(0, 3).join(', ') : 'Industrial laser spares')}
                                 </p>
+                                {cat.subCategories && cat.subCategories.length > 0 && (
+                                  <div className="flex flex-wrap gap-1 mt-1.5" onClick={(e) => e.stopPropagation()}>
+                                    {cat.subCategories.slice(0, 4).map((sub) => (
+                                      <span
+                                        key={sub}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleSubCategorySelect(sub, cat.slug);
+                                        }}
+                                        className="text-[9px] px-1.5 py-0.5 rounded-md bg-[var(--surface-secondary)] hover:bg-[var(--primary)] hover:text-white transition-colors border border-[var(--border)] cursor-pointer"
+                                      >
+                                        {sub}
+                                      </span>
+                                    ))}
+                                    {cat.subCategories.length > 4 && (
+                                      <span className="text-[9px] text-[var(--text-secondary)] self-center">
+                                        +{cat.subCategories.length - 4} more
+                                      </span>
+                                    )}
+                                  </div>
+                                )}
                               </div>
                               <ChevronRight className="w-3.5 h-3.5 text-[var(--text-secondary)] group-hover:text-[var(--primary)] group-hover:translate-x-0.5 transition-all shrink-0" />
                             </button>
@@ -516,7 +539,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                               {cat.subCategories.map(sub => (
                                 <button
                                   key={sub}
-                                  onClick={() => handleSubCategorySelect(sub)}
+                                  onClick={() => handleSubCategorySelect(sub, cat.slug)}
                                   className="w-full text-left px-3 py-1.5 rounded-md text-[11px] font-medium text-[var(--text-secondary)] hover:text-[var(--primary)] hover:bg-[var(--surface-secondary)] cursor-pointer truncate"
                                 >
                                   {sub}

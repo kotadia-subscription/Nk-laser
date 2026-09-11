@@ -5,7 +5,7 @@ import crypto from 'crypto';
 import cookieParser from 'cookie-parser';
 import bcrypt from 'bcryptjs';
 import { createServer as createViteServer } from 'vite';
-import { DEFAULT_SITE_SETTINGS, INITIAL_SERVICES, INITIAL_PRODUCTS, INITIAL_REVIEWS, INITIAL_BRANDS, STORE_CATEGORIES } from './server/seedData';
+import { DEFAULT_SITE_SETTINGS, INITIAL_PRODUCTS, INITIAL_REVIEWS, INITIAL_BRANDS, STORE_CATEGORIES } from './server/seedData';
 
 // Types
 import { ProductItem, ProductCategoryDef, BrandItem, ReviewItem, InquiryRecord, SiteSettings, BusinessAddress } from './src/types';
