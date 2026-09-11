@@ -114,7 +114,7 @@ This document defines the core architecture, rules, engineering standards, compo
 - **Styling**: Tailwind CSS with industrial high-contrast dark and light modes.
 - **Icons**: `lucide-react` exclusively. Do not introduce custom SVGs unless required for specific brand marks (e.g. `WhatsAppIcon.tsx`).
 - **PDF Generation**: `jspdf` and `jspdf-autotable` for client-side PDF quote and catalog generation.
-- **State Management & Persistence**: Server-side persistence via Express backend (`/server.ts`) with client-side cache and fallback seed data in `/src/data/`.
+- **State Management & Persistence**: Authoritative database-only persistence via Cloudflare D1 in production (`d1-seed.sql` & `config` table) and Express backend (`/server.ts` & `app-config.json`) in local development with client-side cache in `src/lib/storage.ts`.
 - **Navigation & URL Routing**: Synchronized query parameters and hash routing in `src/utils/navigation.ts` supporting browser Back/Forward (`popstate`) and deep linking.
 - **Server Bundler**: `esbuild` compiling `server.ts` to `dist/server.cjs` for standalone production execution.
 

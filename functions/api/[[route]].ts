@@ -9,16 +9,14 @@
  */
 
 import bcrypt from 'bcryptjs';
-import { 
-  DEFAULT_SITE_SETTINGS, 
-  INITIAL_PRODUCTS, 
-  STORE_CATEGORIES, 
-  INITIAL_BRANDS, 
-  INITIAL_REVIEWS 
-} from '../../server/seedData';
+import { DEFAULT_SITE_SETTINGS } from '../../src/lib/storage';
 import { ProductItem, ProductCategoryDef, BrandItem, ReviewItem, SiteSettings } from '../../src/types';
 
 const DEFAULT_POWER_RANGES = ['1kW - 3kW', '3kW - 6kW', '6kW - 12kW', '12kW - 30kW', '30kW+'];
+const EMPTY_PRODUCTS: ProductItem[] = [];
+const EMPTY_CATEGORIES: ProductCategoryDef[] = [];
+const EMPTY_BRANDS: BrandItem[] = [];
+const EMPTY_REVIEWS: ReviewItem[] = [];
 
 interface Env {
   DB?: any; // Cloudflare D1 Database binding
@@ -221,11 +219,11 @@ async function ensureD1Tables(env: Env): Promise<void> {
 // Helper to load master configuration from D1 (or fallback)
 async function loadFullConfig(env: Env) {
   let settings = DEFAULT_SITE_SETTINGS;
-  let products = INITIAL_PRODUCTS;
-  let categories = STORE_CATEGORIES;
-  let brands = INITIAL_BRANDS;
+  let products = EMPTY_PRODUCTS;
+  let categories = EMPTY_CATEGORIES;
+  let brands = EMPTY_BRANDS;
   let powerRanges = DEFAULT_POWER_RANGES;
-  let reviews = INITIAL_REVIEWS;
+  let reviews = EMPTY_REVIEWS;
   let lastPublishedAt = new Date().toISOString();
 
   if (env.DB) {
@@ -353,11 +351,11 @@ async function saveFullConfig(env: Env, configData: any): Promise<string> {
   // Update in-memory fallback
   memoryConfigCache = {
     settings: configData.settings || memoryConfigCache?.settings || DEFAULT_SITE_SETTINGS,
-    products: Array.isArray(configData.products) ? configData.products : (memoryConfigCache?.products || INITIAL_PRODUCTS),
-    categories: Array.isArray(configData.categories) ? configData.categories : (memoryConfigCache?.categories || STORE_CATEGORIES),
-    brands: Array.isArray(configData.brands) ? configData.brands : (memoryConfigCache?.brands || INITIAL_BRANDS),
+    products: Array.isArray(configData.products) ? configData.products : (memoryConfigCache?.products || EMPTY_PRODUCTS),
+    categories: Array.isArray(configData.categories) ? configData.categories : (memoryConfigCache?.categories || EMPTY_CATEGORIES),
+    brands: Array.isArray(configData.brands) ? configData.brands : (memoryConfigCache?.brands || EMPTY_BRANDS),
     powerRanges: Array.isArray(configData.powerRanges) ? configData.powerRanges : (memoryConfigCache?.powerRanges || DEFAULT_POWER_RANGES),
-    reviews: Array.isArray(configData.reviews) ? configData.reviews : (memoryConfigCache?.reviews || INITIAL_REVIEWS),
+    reviews: Array.isArray(configData.reviews) ? configData.reviews : (memoryConfigCache?.reviews || EMPTY_REVIEWS),
     lastPublishedAt: publishedAt
   };
 

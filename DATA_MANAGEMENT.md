@@ -22,21 +22,23 @@ If you have not yet created a Cloudflare D1 SQLite database, you may notice that
 
 **Here is exactly where that data comes from and why the site works without a database:**
 
-### 1.1 The 3-Tier Resilient Fallback Engine
-The application was engineered with an **offline-first, fault-tolerant architecture** so visitors never see a blank screen or a broken 500 error page:
+### 1.1 Database-Only Cloud Architecture & Resilient Caching
+The application is architected around **Cloudflare D1 SQLite** as the single, universal source of truth:
 
-1. **Tier 1: Bundled Seed Data (`src/data/` & `server/seedData.ts`)**:
-   - When Vite builds the application, an initial catalog of spare parts (ceramics, lenses, nozzles, cutting heads), taxonomies, OEM brands, and company settings is compiled directly into the client JavaScript bundle.
-2. **Tier 2: Browser Local Storage (`localStorage`)**:
-   - On the very first visit, the frontend transfers the bundled seed data into the visitor's browser `localStorage` under keys `nk_laser_products`, `nk_laser_categories`, and `nk_laser_settings`. Subsequent views load from `localStorage` in less than 1 millisecond.
-3. **Tier 3: Graceful Edge Function Fallback (`functions/api/[[route]].ts`)**:
-   - The Cloudflare Pages edge function includes built-in safety guards: if `env.DB` (the D1 database binding) is not yet connected, the edge function **does not crash**. It serves fallback seed data from memory and allows the site to function smoothly.
+1. **Authoritative Source: Cloudflare D1 Database**:
+   - The entire master catalog (products, categories, subcategories, OEM brands, pricing, settings, and warehouse addresses) is stored directly in the distributed Cloudflare D1 database.
+   - All serverless edge functions (`functions/api/[[route]].ts`) query and mutate D1 directly.
+   - Initial database population is performed using the SQL seed script: `d1-seed.sql` via `npm run db:seed`.
+2. **Browser Local Cache (`localStorage`)**:
+   - When visitors load the site, the frontend synchronizes with the D1 database and caches the catalog locally under keys `nk_laser_products`, `nk_laser_categories`, and `nk_laser_settings`. Subsequent interactions in the session render in less than 1 millisecond.
+3. **Automated Live Sync Across All Devices**:
+   - When an administrator modifies or imports products, categories, or settings in the Admin Console and clicks **"Publish Changes"**, the updates write immediately to Cloudflare D1.
+   - A background version poller detects the change and synchronizes every open browser session globally within seconds.
 
-### 1.2 The Critical Catch: Why You Still Need Cloudflare D1
-While the site appears to work without D1, **changes you make are not yet universal or permanent**:
-- **Without D1**: Any changes you make in the Admin Console (adding a new product, editing prices, updating phone numbers or warehouse addresses) are **only saved in YOUR current browser's local storage**.
-- **The Problem**: A customer visiting from another computer, smartphone, or incognito browser window will **NOT** see your changes—they will only see the original static seed data. Furthermore, customer RFQ inquiries cannot be stored centrally.
-- **With D1 Connected**: When you click **"Publish Changes"** in the Admin Console, your entire updated catalog is written to Cloudflare's distributed D1 SQLite database in the cloud. **All customers worldwide immediately see your live updates across every device.**
+### 1.2 Why Cloudflare D1 Setup is Essential
+While client-side caching enables instantaneous navigation:
+- **Without D1**: If the D1 database is not yet initialized or bound, changes made in the Admin Console only persist in the current browser's local cache.
+- **With D1 Connected & Seeded via `d1-seed.sql`**: Running `npm run db:seed` provisions your complete catalog directly into Cloudflare D1. Every user worldwide sees the exact same real-time catalog, and all customer RFQs and reviews are stored permanently.
 
 ---
 
@@ -108,13 +110,26 @@ npx wrangler pages secret put SESSION_SECRET --project-name=nk-laser
 npx wrangler pages secret put DATA_ENCRYPTION_KEY --project-name=nk-laser
 ```
 
-### Step 5: Seed the Master Database (1-Click from Admin)
-Now that your database is bound and your secrets are saved:
-1. Trigger a fresh deployment in Cloudflare Pages (or deploy via `npm run deploy:pages`) so the new `DB` binding takes effect.
-2. Open your live website and log into the Admin Console at `/?admin=true`.
-3. Go to **Settings** > **Data & Backup**.
-4. Click **"Publish Changes"** (or **"Sync with Server"**).
-5. The application will instantly upload your active catalog (products, categories, brands, settings, and addresses) into the D1 `config` table.
+### Step 5: Seed the Master Database via SQL Script or 1-Click Admin
+Now that your database is bound and your secrets are saved, inject your complete catalog into Cloudflare D1:
+
+#### Method A: Direct Terminal Injection via SQL Script (Recommended)
+Run the automated seed command directly from your terminal:
+```bash
+npm run db:seed
+```
+*Or directly via wrangler:*
+```bash
+npx wrangler d1 execute nk-laser-db --file=./d1-seed.sql --remote
+```
+This executes `d1-seed.sql`, creating the tables and inserting the complete production dataset (`settings`, `products`, `categories`, `brands`, `powerRanges`, and `reviews`) directly into the D1 `config` table.
+
+#### Method B: 1-Click Injection from Admin Console
+Alternatively:
+1. Open your live website and log into the Admin Console at `/?admin=true`.
+2. Go to **Settings** > **Data & Backup**.
+3. Click **"Publish Changes"** (or **"Sync with Server"**).
+4. The application will instantly push your catalog into the D1 database.
 
 ### Step 6: Verify Database Connection & Records
 Run this command from your terminal to confirm your data is live in Cloudflare D1:
