@@ -17,9 +17,9 @@ export const DEFAULT_SITE_SETTINGS: SiteSettings = {
   workingHours: "Mon - Sat: 8:30 AM - 8:00 PM | Sun: By Appointment",
   logoUrl: "/images/logo/nk-laser-logo.svg",
   warehouseBannerUrl: "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=800&q=80",
-  instagramUrl: "https://www.instagram.com/laser.nk",
+  instagramUrl: "https://www.instagram.com/nklaser.india",
   socialLinks: {
-    instagram: "https://www.instagram.com/laser.nk"
+    instagram: "https://www.instagram.com/nklaser.india"
   },
   themeMode: 'light',
   primaryColor: '#162657',
@@ -168,21 +168,27 @@ export function saveBrands(brands: BrandItem[]): void {
 
 function normalizeAddresses(parsedAddresses: any, fallbackAddressString?: string): BusinessAddress[] {
   if (Array.isArray(parsedAddresses) && parsedAddresses.length > 0) {
-    return parsedAddresses.map((addr: any, idx: number) => ({
-      id: addr.id || `addr-${idx + 1}-${Date.now()}`,
-      title: addr.title || (idx === 0 ? 'Central Spares Warehouse & HQ' : `Regional Dispatch Center ${idx + 1}`),
-      addressLine: addr.addressLine || addr.address || fallbackAddressString || 'Plot No. 42, GIDC Industrial Area, Sector 3',
-      cityState: addr.cityState || 'Gujarat, India',
-      pincode: addr.pincode || '',
-      warehouseType: addr.warehouseType || (idx === 0 ? 'Central Warehouse & HQ' : 'Express Dispatch Hub'),
-      phone: addr.phone || '+91 99020 35374',
-      email: addr.email || 'nklaser33@gmail.com',
-      contactPerson: addr.contactPerson || '',
-      workingHours: addr.workingHours || 'Mon - Sat: 8:30 AM - 8:00 PM',
-      dispatchTiming: addr.dispatchTiming || 'Same-day dispatch for orders confirmed by 4:00 PM',
-      isPrimary: addr.isPrimary !== undefined ? Boolean(addr.isPrimary) : (idx === 0),
-      mapUrl: addr.mapUrl || ''
-    }));
+    return parsedAddresses.map((addr: any, idx: number) => {
+      const title = addr.title || (idx === 0 ? 'Central Spares Warehouse & HQ' : `Regional Dispatch Center ${idx + 1}`);
+      const addressLine = addr.addressLine || addr.address || fallbackAddressString || 'Plot No. 42, GIDC Industrial Area, Sector 3';
+      const cityState = addr.cityState !== undefined ? addr.cityState : (idx === 0 ? 'Gujarat / Bengaluru, India' : '');
+      const mapQuery = [title, addressLine, cityState, addr.pincode].filter(Boolean).join(', ');
+      return {
+        id: addr.id || `addr-${idx + 1}-${Date.now()}`,
+        title,
+        addressLine,
+        cityState,
+        pincode: addr.pincode || '',
+        warehouseType: addr.warehouseType || (idx === 0 ? 'Central Warehouse & HQ' : 'Express Dispatch Hub'),
+        phone: addr.phone !== undefined ? addr.phone : '',
+        email: addr.email !== undefined ? addr.email : '',
+        contactPerson: addr.contactPerson || '',
+        workingHours: addr.workingHours || 'Mon - Sat: 8:30 AM - 8:00 PM',
+        dispatchTiming: addr.dispatchTiming || 'Same-day dispatch for orders confirmed by 4:00 PM',
+        isPrimary: addr.isPrimary !== undefined ? Boolean(addr.isPrimary) : (idx === 0),
+        mapUrl: addr.mapUrl || (addressLine ? `https://maps.google.com/?q=${encodeURIComponent(mapQuery)}` : '')
+      };
+    });
   }
   if (fallbackAddressString) {
     return [

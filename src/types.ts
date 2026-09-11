@@ -273,7 +273,7 @@ export interface SiteSettings {
   workingHours: string;
   logoUrl: string;
   warehouseBannerUrl?: string;
-  instagramUrl?: string; // e.g. "https://www.instagram.com/laser.nk"
+  instagramUrl?: string; // e.g. "https://www.instagram.com/nklaser.india"
   socialLinks?: {
     instagram?: string;
     facebook?: string;

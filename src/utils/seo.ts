@@ -168,8 +168,8 @@ export function generateSchemaGraph(options: {
       }
     ],
     sameAs: [
-      settings.instagramUrl || 'https://www.instagram.com/laser.nk',
-      settings.socialLinks?.instagram || 'https://www.instagram.com/laser.nk',
+      settings.instagramUrl || 'https://www.instagram.com/nklaser.india',
+      settings.socialLinks?.instagram || 'https://www.instagram.com/nklaser.india',
       settings.socialLinks?.facebook,
       settings.socialLinks?.youtube,
       settings.socialLinks?.linkedin

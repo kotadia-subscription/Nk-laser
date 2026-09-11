@@ -1152,7 +1152,7 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({
             <div className="relative">
               <input
                 type="text"
-                placeholder="e.g. https://www.instagram.com/laser.nk or @laser.nk"
+                placeholder="e.g. https://www.instagram.com/nklaser.india or @nklaser.india"
                 value={formData.instagramUrl || formData.socialLinks?.instagram || ''}
                 onChange={(e) => {
                   const val = e.target.value;
@@ -1169,7 +1169,7 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({
               />
             </div>
             <p className="text-[10px] text-slate-400">
-              Enter either your full Instagram link or simply your username (e.g. <span className="font-mono text-slate-600">@laser.nk</span>). The system will automatically link it and display your clean handle.
+              Enter either your full Instagram link or simply your username (e.g. <span className="font-mono text-slate-600">@nklaser.india</span>). The system will automatically link it and display your clean handle.
             </p>
           </div>
 
