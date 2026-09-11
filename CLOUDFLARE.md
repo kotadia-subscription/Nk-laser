@@ -10,6 +10,46 @@ It covers:
 
 ---
 
+## 0. Quick Start: One-Click Interactive Deploy (Recommended)
+
+```bash
+npm run deploy
+```
+
+This runs `scripts/cf-deploy.cjs`, an interactive, dependency-free deployment
+wizard that works **identically on Windows, macOS, and Linux** (no bash
+required — it's pure Node, invoked directly, never through a shell). It walks
+you through, and is safe to re-run any time (every step detects existing
+state and skips or repairs rather than duplicating work):
+
+1. Confirms Cloudflare login (offers `wrangler login` if needed).
+2. Asks Pages or Workers, and the project name.
+3. Creates the D1 database if it doesn't exist, and binds it in the right
+   `wrangler*.toml`.
+4. Applies `d1-schema.sql`, then **automatically repairs schema drift** -
+   diffing every table's live columns against the schema file and adding any
+   that are missing (safe no-op if nothing is missing).
+5. Offers to (re)generate and run the catalog seed (`d1-seed.sql`) - and the
+   generator itself now auto-extracts any inline base64 image accidentally
+   embedded in `app-config.json` into a real file under
+   `public/images/extracted/`, so a single oversized product photo can no
+   longer break the whole seed with `SQLITE_TOOBIG`.
+6. Offers to configure the 4 secrets, auto-generating `SESSION_SECRET` /
+   `DATA_ENCRYPTION_KEY` if you leave them blank.
+7. Builds (`vite build` + `esbuild`) and deploys.
+8. Verifies the live deployment's `/api/health` reports `d1Connected: true`
+   before declaring success - this is the check that would have caught the
+   "site returns 200 but the catalog is empty because D1 was never actually
+   bound in production" failure mode described in section 8 below.
+
+The `deploy-pages.sh` / `deploy-worker.sh` bash scripts (section 3) still
+work and now include the same drift-repair and seeding steps, but require
+bash - use them if you're already a bash user or wiring this into a
+Linux/macOS CI job; use `npm run deploy` everywhere else, including plain
+Windows PowerShell/cmd with no Git Bash installed.
+
+---
+
 ## 1. The 4 Cloudflare Secrets (Admin Login & Security)
 
 If you were unable to log into the Admin Console (`/?admin=true`), this occurs when the edge runtime has no secret configured to verify your password against, or when API requests are not handled by an edge function.
@@ -256,8 +296,10 @@ npx wrangler pages deploy dist --project-name=nk-laser
 
 | File | Role & Description |
 |---|---|
-| `deploy-pages.sh` | **Automated deployment script** for Cloudflare Pages (Method 1). |
-| `deploy-worker.sh` | **Automated deployment script** for Cloudflare Workers (Method 2). |
+| `scripts/cf-deploy.cjs` | **Interactive, cross-platform deploy wizard** (`npm run deploy`) - Windows/macOS/Linux, no bash required. Covers D1 create/bind/drift-repair/seed, Pages or Workers project + secrets, build, deploy, and a post-deploy `/api/health` check. |
+| `deploy-pages.sh` | **Automated deployment script** for Cloudflare Pages (Method 1), bash only. |
+| `deploy-worker.sh` | **Automated deployment script** for Cloudflare Workers (Method 2), bash only. |
+| `scripts/generate-d1-seed.cjs` | Generates `d1-seed.sql` from `app-config.json`; auto-extracts any oversized inline base64 image into `public/images/extracted/` first (see 8.2). |
 | `d1-schema.sql` | **Cloudflare D1 SQL Schema** creating `config`, `inquiries`, `reviews`, and `sessions` tables. |
 | `functions/api/[[route]].ts` | **Edge API Router**: handles `/api/auth/*`, `/api/config`, `/api/products`, `/api/inquiries`, and `/api/reviews` with D1 persistence and PII encryption. |
 | `functions/[[path]].ts` | **Edge Bot Pre-Renderer**: detects search crawlers (Googlebot, Bingbot, WhatsApp) and returns rich Schema.org HTML. |
@@ -304,22 +346,93 @@ For complete database lifecycle, zero-loss deployment strategies, and synchroniz
 
 After deploying your application:
 
-1. **Verify Storefront**:
+1. **Verify D1 Is Actually Connected**:
+   - Open `https://nk-laser.pages.dev/api/health` and confirm `"d1Connected": true`.
+   - Do this every time you deploy, not just the first time. A `200` homepage
+     and a plausible-looking `/api/config` response are **not** proof the
+     catalog is live - see section 8 for why.
+2. **Verify Storefront**:
    - Open `https://nk-laser.pages.dev/store`.
    - Verify product catalog loads with quick search, OEM brand filtering, and power rating facets.
-2. **Verify Admin Console Login**:
+3. **Verify Admin Console Login**:
    - Open `https://nk-laser.pages.dev/?admin=true`.
    - Enter your `ADMIN_PASSWORD`.
    - Verify you are authenticated and redirected to the Admin Dashboard.
-3. **Verify Data Persistence (Redeployment Test)**:
+4. **Verify Data Persistence (Redeployment Test)**:
    - In the Admin Console, edit a product or change site settings (e.g., update phone number or tagline).
    - Click **Publish Changes**.
-   - Trigger a redeployment using `./deploy-pages.sh` or `git push`.
+   - Trigger a redeployment using `npm run deploy`, `./deploy-pages.sh`, or `git push`.
    - Refresh `https://nk-laser.pages.dev`. Notice your changes remain **100% preserved in Cloudflare D1**!
-4. **Verify Customer RFQ Encryption**:
+5. **Verify Customer RFQ Encryption**:
    - Submit a test inquiry via the storefront Quote Calculator or Product page.
    - In the Admin Console under **Inquiries / Leads**, verify that the lead appears with full contact details decrypted for you.
-5. **Connect Custom Domain**:
+6. **Connect Custom Domain**:
    - In the Cloudflare Dashboard: **Workers & Pages** > **`nk-laser`** > **Custom domains** > **Set up a custom domain**.
    - Enter your domain (e.g., `spares.nklaser.com` or `nklaser.in`).
    - Cloudflare will automatically provision free SSL/TLS certificates and manage DNS routing.
+
+---
+
+## 8. Troubleshooting: Real Incidents We Fixed
+
+These are actual failures hit while operating this project, kept here so
+they're diagnosable in under a minute instead of re-discovered from scratch.
+
+### 8.1 "It returns 200 and looks fine, but the catalog is empty"
+`/api/config` can return `200` with a plausible-looking `settings` object
+(business name, phone, address) while `products`/`categories`/`brands` are
+silently empty arrays. That's because `loadFullConfig()` in
+`functions/api/[[route]].ts` falls back to hardcoded `DEFAULT_SITE_SETTINGS`
+and `EMPTY_PRODUCTS`/`EMPTY_CATEGORIES`/... whenever `env.DB` is falsy - a
+missing D1 binding fails *silently* into fallback data, not with an error.
+**Diagnosis**: check `GET /api/health` - if `d1Connected` is `false`, the
+Pages Function has no D1 binding at all, regardless of what `wrangler.toml`
+or the Dashboard say should be bound. **Fix**: either bind D1 in the
+Dashboard (Settings > Functions > D1 database bindings) and trigger a new
+build, or run `npm run deploy` / `./deploy-pages.sh`, which deploy directly
+via `wrangler pages deploy` using `wrangler.toml`'s binding - bypassing
+whatever the git-connected build path is or isn't picking up. Always re-check
+`/api/health` after any deploy method change.
+
+### 8.2 `SQLITE_TOOBIG` when running the catalog seed
+D1's bulk `--file` import rejects any single SQL statement over roughly
+100KB. A product/category/brand image accidentally saved as an inline
+`data:image/...;base64,...` string (e.g. an upload that fell back to
+embedding because no image host was configured) can push that one row's
+`INSERT` well past the limit - and it appears *twice* per row (once in its
+own column, once again inside `raw_json`), so even a ~100KB image is enough.
+**Fix**: `scripts/generate-d1-seed.cjs` now scans the whole config for any
+string over 15KB that looks like a `data:image/...;base64,` URI, decodes it
+to a real file under `public/images/extracted/`, rewrites `app-config.json`
+to reference that file's path instead, and logs what it did. This runs
+automatically on every `npm run db:seed:generate` / `npm run deploy` - you
+do not need to hunt for the offending row by hand.
+
+### 8.3 `table reviews has no column named company` (or similar)
+`CREATE TABLE IF NOT EXISTS` is a no-op against a table that already exists -
+it will **not** add columns that were added to `d1-schema.sql` after the
+table was first created remotely. If the remote database predates a schema
+change, you'll get a `SQLITE_ERROR` naming the missing column the first time
+a query touches it. **Fix**: `npm run deploy`, `deploy-pages.sh`,
+`deploy-worker.sh`, and `scripts/sync-database.sh` all now run a drift check
+after applying the schema - `npm run deploy` does it generically for every
+table by diffing `PRAGMA table_info` against `d1-schema.sql`; the bash
+scripts run the three known `reviews` columns (`company`, `location`,
+`verified`) as `ALTER TABLE ... ADD COLUMN` statements that silently no-op if
+the column already exists. Safe to run on every deploy.
+
+### 8.4 `npm run <script>` fails with "not recognized as an internal or
+external command" / `Cannot find module '...wrangler\bin\wrangler.js'` on
+Windows
+This happens when the project's folder path contains an `&` character (as
+this repo's does). `npm run` on Windows always executes scripts through
+`cmd.exe`, even from a PowerShell prompt. npm's auto-generated `.cmd` shims
+in `node_modules\.bin\` splice their own folder path into a batch line that
+already uses `&` as a control operator - the literal `&` in the path breaks
+`cmd.exe`'s parsing and truncates the resolved module path. This affects
+*any* `.cmd`-shimmed binary (`vite`, `esbuild`, `tsc`, `tsx`, `wrangler`),
+not just one of them. **Fix**: every `package.json` script and
+`scripts/cf-deploy.cjs` now invoke tools as `node ./node_modules/<pkg>/<entry>`
+directly - bypassing the `.cmd` shim entirely - which behaves identically on
+Windows, macOS, and Linux. If you add a new script that shells out to a CLI
+tool, follow the same pattern rather than calling the bare command name.

@@ -28,6 +28,14 @@ fi
 echo "Applying schema migrations to remote database: $DB_NAME..."
 npx wrangler d1 execute "$DB_NAME" --file="$SCHEMA_FILE" --remote
 
+# Repair schema drift: CREATE TABLE IF NOT EXISTS won't retrofit columns onto
+# a table that was already created by an older version of $SCHEMA_FILE. These
+# ALTERs are no-ops (silently ignored) if the columns already exist.
+echo "Checking for schema drift on 'reviews' table..."
+npx wrangler d1 execute "$DB_NAME" --command="ALTER TABLE reviews ADD COLUMN company TEXT;" --remote > /dev/null 2>&1 || true
+npx wrangler d1 execute "$DB_NAME" --command="ALTER TABLE reviews ADD COLUMN location TEXT;" --remote > /dev/null 2>&1 || true
+npx wrangler d1 execute "$DB_NAME" --command="ALTER TABLE reviews ADD COLUMN verified INTEGER DEFAULT 1;" --remote > /dev/null 2>&1 || true
+
 echo "========================================================"
 echo "Database schema synchronized successfully!"
 echo "Tables verified: config, inquiries, reviews, sessions"

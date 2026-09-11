@@ -7,9 +7,11 @@
 
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 
 const configPath = path.join(__dirname, '..', 'app-config.json');
 const outputPath = path.join(__dirname, '..', 'd1-seed.sql');
+const extractedImagesDir = path.join(__dirname, '..', 'public', 'images', 'extracted');
 
 if (!fs.existsSync(configPath)) {
   console.error('app-config.json not found at', configPath);
@@ -17,6 +19,53 @@ if (!fs.existsSync(configPath)) {
 }
 
 const cfg = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+
+// D1's bulk SQL import rejects any single statement over ~100KB (SQLITE_TOOBIG).
+// A base64 image accidentally embedded inline (e.g. via an upload field with no
+// hosting configured) can blow a single product/category/brand row past that
+// limit. Walk the config and swap any large inline data: URI for a real file
+// under public/images/extracted, so it deploys as a normal static asset instead.
+const DATA_URI_SIZE_THRESHOLD = 15000;
+let extractedCount = 0;
+
+function extractLargeDataUris(node, keyPath) {
+  if (Array.isArray(node)) {
+    node.forEach((item, i) => extractLargeDataUris(item, keyPath.concat(i)));
+    return;
+  }
+  if (!node || typeof node !== 'object') return;
+  for (const key of Object.keys(node)) {
+    const val = node[key];
+    if (typeof val === 'string' && val.length > DATA_URI_SIZE_THRESHOLD) {
+      const match = val.match(/^data:image\/(\w+);base64,([\s\S]+)$/);
+      if (match) {
+        const ext = match[1] === 'jpeg' ? 'jpg' : match[1];
+        const buf = Buffer.from(match[2], 'base64');
+        const hash = crypto.createHash('md5').update(val).digest('hex').slice(0, 8);
+        const slugBase = String(node.id || node.slug || keyPath.join('-'))
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/(^-|-$)/g, '')
+          .slice(0, 60);
+        const fileName = `${slugBase}-${hash}.${ext}`;
+        fs.mkdirSync(extractedImagesDir, { recursive: true });
+        fs.writeFileSync(path.join(extractedImagesDir, fileName), buf);
+        const publicPath = `/images/extracted/${fileName}`;
+        node[key] = publicPath;
+        extractedCount++;
+        console.log(`  Extracted embedded image at ${keyPath.concat(key).join('.')} (${(buf.length / 1024).toFixed(1)} KB) -> ${publicPath}`);
+      }
+    } else if (val && typeof val === 'object') {
+      extractLargeDataUris(val, keyPath.concat(key));
+    }
+  }
+}
+
+extractLargeDataUris(cfg, []);
+if (extractedCount > 0) {
+  fs.writeFileSync(configPath, JSON.stringify(cfg, null, 2));
+  console.log(`Rewrote app-config.json: ${extractedCount} inline image(s) moved to public/images/extracted/ (remember to deploy these new files).`);
+}
 
 function sqlStr(val) {
   if (val === null || val === undefined) return 'NULL';

@@ -343,17 +343,29 @@ Leave this terminal window open while reproducing the issue in your browser. Any
 ---
 
 #### Issue 7: "statement too long: SQLITE_TOOBIG" during Seed Execution
-- **Root Cause**: Cloudflare D1 and SQLite enforce a strict maximum statement length limit of **1,000,000 bytes (1MB)** per SQL statement. If an SQL script attempts to execute a single monolithic `INSERT` statement containing an entire JSON configuration blob or large embedded base64 images, SQLite rejects it with `SQLITE_TOOBIG`.
-- **Solution**:
-  1. Use the new relational seed generator that separates data into individual, atomic `INSERT OR REPLACE` statements per table and per entity:
+- **Root Cause**: Cloudflare D1's bulk `--file` import rejects any *single* SQL statement over roughly 100KB (well under SQLite's own 1MB `SQLITE_MAX_SQL_LENGTH`). `scripts/generate-d1-seed.cjs` already splits the catalog into one atomic `INSERT` per row, and a normal product row is only ~1-2 KB - but if a single product/category/brand has an image saved as an inline `data:image/...;base64,...` string instead of a URL (e.g. an upload that fell back to embedding because no image host was configured), that *one row's* statement can balloon past the limit on its own - and it appears twice (once in its own column, once again inside `raw_json`), so even a ~100KB image is enough to trigger `SQLITE_TOOBIG`. Splitting by entity does not help if the entity itself is the oversized one.
+- **Solution (now automatic)**:
+  1. `npm run db:seed:generate` (or `npm run deploy`) first scans the whole config for any string over 15KB that looks like a `data:image/...;base64,` URI, decodes it to a real file under `public/images/extracted/`, and rewrites `app-config.json` to reference that file's path instead - logging exactly what it moved. Re-run this any time an admin upload embeds an image without a hosting URL.
+  2. Then it generates `d1-seed.sql` as before (one bounded `INSERT` per row):
      ```bash
      npm run db:seed:generate
      ```
-  2. Execute the updated relational seed script:
+  3. Execute the seed script:
      ```bash
      npx wrangler d1 execute nk-laser-db --file=./d1-seed.sql --remote
      ```
-  3. All statements are now bounded (each individual product insert is only ~1-2 KB), cleanly bypassing SQLite's statement limit. In addition, `functions/api/[[route]].ts` batches mutations in safe chunks of 50 records.
+  4. `functions/api/[[route]].ts` separately batches live admin-console mutations in safe chunks of 50 records - that protection was always there; the seed-generation gap above is what's newly fixed.
+
+---
+
+#### Issue 8: Site returns 200 with plausible data, but the catalog is empty
+- **Root Cause**: `loadFullConfig()` in `functions/api/[[route]].ts` falls back to hardcoded default settings and *empty* product/category/brand/review arrays whenever `env.DB` is unbound - silently, with no error. A `200` on `/` or `/api/config` is not proof D1 is actually wired up; it may just be serving fallback data.
+- **Diagnosis**: `GET /api/health` and check `d1Connected`. If `false`, the deployed Pages Function has no D1 binding, regardless of what `wrangler.toml` or the Dashboard claim.
+- **Solution**: Bind D1 in the Dashboard (Settings > Functions > D1 database bindings) and trigger a fresh build, or deploy directly with `npm run deploy` / `./deploy-pages.sh` (both use `wrangler pages deploy`, which reads the binding straight from `wrangler.toml`). Re-check `/api/health` after every deploy, not just the first one - see CLOUDFLARE.md section 8.1 for the full incident writeup.
+
+#### Issue 9: "table X has no column named Y" (e.g. `reviews` / `company`)
+- **Root Cause**: `CREATE TABLE IF NOT EXISTS` is a no-op against a table that already exists remotely, so it never retrofits columns added to `d1-schema.sql` after that table was first created. A database provisioned before a schema change will be missing those columns.
+- **Solution**: `npm run deploy`, `deploy-pages.sh`, `deploy-worker.sh`, and `scripts/sync-database.sh` all now run a drift-repair step right after applying the schema - safe to run on every deploy, since it no-ops for columns that already exist. See CLOUDFLARE.md section 8.3.
 
 ---
 

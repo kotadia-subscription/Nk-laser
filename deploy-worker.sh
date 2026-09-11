@@ -2,6 +2,12 @@
 # =============================================================================
 # NK Laser Spares & Optics - Cloudflare Worker Automated Deployment Script
 # Method 2: Fullstack Worker + Static Assets + Cloudflare D1 (Zero Data Loss)
+#
+# Requires bash (native on macOS/Linux; Git Bash on Windows). If you're on
+# Windows without Git Bash, or just want one interactive command that works
+# identically everywhere, use `npm run deploy` instead (scripts/cf-deploy.cjs) -
+# it covers the same ground (D1 create/bind/schema-drift-repair/seed, project +
+# secrets + build + deploy) with no bash dependency.
 # =============================================================================
 
 set -e
@@ -21,7 +27,7 @@ WORKER_CONFIG="wrangler.worker.toml"
 DB_NAME="nk-laser-db"
 
 # 1. Verify Dependencies
-echo -e "\n${YELLOW}[1/6] Verifying CLI Tools...${NC}"
+echo -e "\n${YELLOW}[1/7] Verifying CLI Tools...${NC}"
 if ! command -v node &> /dev/null; then
   echo -e "${RED}Error: Node.js is not installed. Please install Node.js (v18+).${NC}"
   exit 1
@@ -33,7 +39,7 @@ if ! command -v npm &> /dev/null; then
 fi
 
 # 2. Check Wrangler Authentication
-echo -e "\n${YELLOW}[2/6] Checking Cloudflare Authentication...${NC}"
+echo -e "\n${YELLOW}[2/7] Checking Cloudflare Authentication...${NC}"
 if ! npx wrangler whoami &> /dev/null; then
   echo -e "${YELLOW}You are not logged in to Cloudflare. Opening login...${NC}"
   npx wrangler login
@@ -42,7 +48,7 @@ fi
 echo -e "${GREEN}✓ Authenticated with Cloudflare.${NC}"
 
 # 3. Cloudflare D1 Database Provisioning & Schema Migration
-echo -e "\n${YELLOW}[3/6] Setting up Cloudflare D1 Database (${DB_NAME})...${NC}"
+echo -e "\n${YELLOW}[3/7] Setting up Cloudflare D1 Database (${DB_NAME})...${NC}"
 
 D1_OUTPUT=$(npx wrangler d1 info "$DB_NAME" 2>&1 || true)
 
@@ -82,8 +88,37 @@ npx wrangler d1 execute "$DB_NAME" --file=./d1-schema.sql --remote --yes || {
 }
 echo -e "${GREEN}✓ D1 database schema ready.${NC}"
 
-# 4. Check & Configure Cloudflare Secrets
-echo -e "\n${YELLOW}[4/6] Checking Cloudflare Worker Secrets...${NC}"
+# Repair schema drift: an older deployment may have created tables before a
+# column was added to d1-schema.sql (CREATE TABLE IF NOT EXISTS won't retrofit
+# an existing table). These ALTERs are no-ops (silently ignored) if the columns
+# already exist, so they're safe to run every time.
+echo -e "${CYAN}Checking for schema drift on 'reviews' table...${NC}"
+npx wrangler d1 execute "$DB_NAME" --command="ALTER TABLE reviews ADD COLUMN company TEXT;" --remote > /dev/null 2>&1 || true
+npx wrangler d1 execute "$DB_NAME" --command="ALTER TABLE reviews ADD COLUMN location TEXT;" --remote > /dev/null 2>&1 || true
+npx wrangler d1 execute "$DB_NAME" --command="ALTER TABLE reviews ADD COLUMN verified INTEGER DEFAULT 1;" --remote > /dev/null 2>&1 || true
+echo -e "${GREEN}✓ Schema drift check complete.${NC}"
+
+# 4. Seed Catalog Data (one-time, safe to skip if already seeded)
+echo -e "\n${YELLOW}[4/7] Catalog Data Seeding...${NC}"
+PRODUCT_COUNT=$(npx wrangler d1 execute "$DB_NAME" --command="SELECT COUNT(*) AS c FROM products;" --remote --json 2>/dev/null | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{try{console.log(JSON.parse(d)[0].results[0].c)}catch{console.log('0')}})")
+echo -e "Remote 'products' table currently has ${PRODUCT_COUNT} row(s)."
+if [ "$PRODUCT_COUNT" = "0" ]; then
+  read -p "No catalog data found. Seed it now from app-config.json? [Y/n]: " DO_SEED
+  DO_SEED=${DO_SEED:-Y}
+else
+  read -p "Re-generate and re-run the catalog seed from app-config.json? [y/N]: " DO_SEED
+  DO_SEED=${DO_SEED:-N}
+fi
+if [[ "$DO_SEED" =~ ^[Yy]$ ]]; then
+  node scripts/generate-d1-seed.cjs
+  npx wrangler d1 execute "$DB_NAME" --file=./d1-seed.sql --remote --yes
+  echo -e "${GREEN}✓ Catalog seeded.${NC}"
+else
+  echo -e "${CYAN}Skipped seeding.${NC}"
+fi
+
+# 5. Check & Configure Cloudflare Secrets
+echo -e "\n${YELLOW}[5/7] Checking Cloudflare Worker Secrets...${NC}"
 echo -e "The application uses 4 secrets for security, admin authentication & AI:"
 echo -e "  1. ADMIN_PASSWORD       (Master password to log into /?admin=true)"
 echo -e "  2. SESSION_SECRET        (Cryptographic secret for admin session tokens)"
@@ -122,13 +157,13 @@ if [[ "$CONFIGURE_SECRETS" =~ ^[Yy]$ ]]; then
   fi
 fi
 
-# 5. Build Production Bundle
-echo -e "\n${YELLOW}[5/6] Building Production Bundle with Vite...${NC}"
+# 6. Build Production Bundle
+echo -e "\n${YELLOW}[6/7] Building Production Bundle with Vite...${NC}"
 npm run build
 echo -e "${GREEN}✓ Production bundle compiled successfully to dist/.${NC}"
 
-# 6. Deploy Worker with Static Assets
-echo -e "\n${YELLOW}[6/6] Deploying Cloudflare Worker with Static Assets...${NC}"
+# 7. Deploy Worker with Static Assets
+echo -e "\n${YELLOW}[7/7] Deploying Cloudflare Worker with Static Assets...${NC}"
 npx wrangler deploy --config "$WORKER_CONFIG"
 
 echo -e "\n${GREEN}======================================================${NC}"
