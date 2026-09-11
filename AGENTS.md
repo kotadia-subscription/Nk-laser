@@ -202,6 +202,14 @@ Every navigation change in the UI MUST synchronize with the browser URL using `u
 - Always sanitize telephone numbers before generating `https://wa.me/{number}` URLs by stripping non-numeric characters: `(settings.whatsappNumber || '').replace(/[^0-9]/g, '')`.
 - Format messages with clean markdown (`*Bold*`, bullet points, and separator lines).
 
+### 6.6 Social Media & Instagram Standard
+- The canonical default Instagram handle for NK Laser is strictly **`nklaser.india`** (`https://www.instagram.com/nklaser.india` and `@nklaser.india`). Always utilize `src/utils/instagram.ts` helpers to parse handles and generate secure target URLs.
+
+### 6.7 Production Data Management, D1 Persistence & Safe Deployments
+- **Zero Data Loss Rule**: Code redeployments must never reset or drop database records. Cloudflare D1 lifecycle is isolated from frontend/edge code deployments.
+- **Extending Product Schema**: Because the catalog is stored in D1's `config` document store, adding new product attributes requires updating `src/types.ts` and UI modals—NEVER run destructive SQL migrations.
+- For in-depth database mechanics, "Sync with Server" details, and live debugging via `wrangler pages deployment tail`, consult **`DATA_MANAGEMENT.md`**.
+
 ---
 
 ## 7. Verification & Quality Assurance
