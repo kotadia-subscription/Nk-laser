@@ -155,5 +155,6 @@ npm start
 ---
 
 ## ☁️ Deployment & Production Data Management
-- For complete Cloudflare Pages, Cloudflare Workers, and Cloudflare D1 database setup instructions, refer to **[CLOUDFLARE.md](./CLOUDFLARE.md)**.
+- **One-click, cross-platform (Windows/macOS/Linux) deploy**: `npm run deploy` — an interactive wizard that provisions/binds Cloudflare D1, repairs schema drift, seeds catalog data, configures secrets, builds, and deploys, with a post-deploy health check. No bash required.
+- For complete Cloudflare Pages, Cloudflare Workers, and Cloudflare D1 database setup instructions (including the bash-based alternative scripts and troubleshooting for real incidents), refer to **[CLOUDFLARE.md](./CLOUDFLARE.md)**.
 - For data persistence, "Sync with Server" mechanics, zero-data-loss deployments, safe schema migrations, and live debugging, refer to **[DATA_MANAGEMENT.md](./DATA_MANAGEMENT.md)**.

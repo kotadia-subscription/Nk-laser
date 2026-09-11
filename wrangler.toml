@@ -13,8 +13,8 @@ compatibility_flags = ["nodejs_compat"]
 # Option 2 (Via wrangler.toml): If binding via file, replace with your real 36-char database_id
 # obtained from `npx wrangler d1 create nk-laser-db`.
 # (Do not leave database_id as empty string "" or Cloudflare will throw Error 8000022)
-# [[d1_databases]]
-# binding = "DB"
-# database_name = "nk-laser-db"
-# database_id = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+[[d1_databases]]
+binding = "DB"
+database_name = "nk-laser-db"
+database_id = "c3dcdbc0-de6d-4fdd-9dc0-86f18377542f"
 

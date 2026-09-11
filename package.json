@@ -4,17 +4,19 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "tsx server.ts",
-    "build": "vite build && node -e \"require('fs').copyFileSync('dist/index.html','dist/200.html')\" && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
+    "dev": "node ./node_modules/tsx/dist/cli.mjs server.ts",
+    "build": "node ./node_modules/vite/bin/vite.js build && node -e \"require('fs').copyFileSync('dist/index.html','dist/200.html')\" && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
     "start": "node dist/server.cjs",
-    "clean": "rm -rf dist server.js",
-    "lint": "tsc --noEmit",
-    "db:init": "wrangler d1 execute nk-laser-db --file=./d1-schema.sql --remote",
+    "clean": "node -e \"const fs=require('fs');fs.rmSync('dist',{recursive:true,force:true});fs.rmSync('server.js',{force:true})\"",
+    "lint": "node ./node_modules/typescript/bin/tsc --noEmit",
+    "db:init": "node ./node_modules/wrangler/bin/wrangler.js d1 execute nk-laser-db --file=./d1-schema.sql --remote",
     "db:seed:generate": "node scripts/generate-d1-seed.cjs",
-    "db:seed": "wrangler d1 execute nk-laser-db --file=./d1-seed.sql --remote",
-    "db:seed:local": "wrangler d1 execute nk-laser-db --file=./d1-seed.sql --local",
-    "db:sync": "wrangler d1 execute nk-laser-db --file=./d1-schema.sql --remote",
-    "db:sync:local": "wrangler d1 execute nk-laser-db --file=./d1-schema.sql --local",
+    "db:seed": "node ./node_modules/wrangler/bin/wrangler.js d1 execute nk-laser-db --file=./d1-seed.sql --remote",
+    "db:seed:local": "node ./node_modules/wrangler/bin/wrangler.js d1 execute nk-laser-db --file=./d1-seed.sql --local",
+    "db:sync": "node ./node_modules/wrangler/bin/wrangler.js d1 execute nk-laser-db --file=./d1-schema.sql --remote",
+    "db:sync:local": "node ./node_modules/wrangler/bin/wrangler.js d1 execute nk-laser-db --file=./d1-schema.sql --local",
+    "wrangler": "node ./node_modules/wrangler/bin/wrangler.js",
+    "deploy": "node scripts/cf-deploy.cjs",
     "deploy:pages": "bash deploy-pages.sh",
     "deploy:worker": "bash deploy-worker.sh"
   },
@@ -45,6 +47,7 @@
     "tailwindcss": "^4.1.14",
     "tsx": "^4.21.0",
     "typescript": "~5.8.2",
-    "vite": "^6.2.3"
+    "vite": "^6.2.3",
+    "wrangler": "^4.131.0"
   }
 }
