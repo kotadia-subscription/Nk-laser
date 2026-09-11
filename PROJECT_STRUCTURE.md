@@ -31,6 +31,13 @@ The application pairs a high-conversion client-facing product catalog with a pas
 ├── vite.config.ts                        # Vite bundler & Tailwind plugin config
 ├── server.ts                             # Authoritative Node.js / Express backend server (Port 3000)
 ├── app-config.json                       # Persistent database store on disk (products, categories, settings, PII)
+├── d1-schema.sql                         # Cloudflare D1 relational database schema (8 dedicated tables & indexes)
+├── d1-seed.sql                           # Production SQL seed script with atomic bounded statements
+├── scripts/
+│   └── generate-d1-seed.cjs              # Automated D1 relational seed generator (prevents SQLITE_TOOBIG)
+├── functions/                            # Cloudflare Pages Edge Functions (/api/* & bot pre-rendering)
+│   ├── api/[[route]].ts                  # D1 relational queries, authentication, RFQ routing & CORS
+│   └── [[path]].ts                       # Dynamic OpenGraph & bot meta pre-rendering
 ├── AGENTS.md                             # AI Agent guidelines, architecture & rules (Auto-injected)
 ├── CLOUDFLARE.md                         # Complete Cloudflare Pages & D1 deployment instructions
 ├── DATA_MANAGEMENT.md                    # Data persistence, modular import/export & server sync guide

@@ -72,7 +72,7 @@ database_name = "nk-laser-db"
 ```
 
 ### Step 2: Initialize Database Schema & Tables
-Execute the provided `d1-schema.sql` to create the required tables (`config`, `inquiries`, `reviews`, `sessions`) on your remote Cloudflare database:
+Execute the provided `d1-schema.sql` to create the relational database schema on your remote Cloudflare database:
 ```bash
 npx wrangler d1 execute nk-laser-db --file=./d1-schema.sql --remote
 ```
@@ -81,7 +81,15 @@ npx wrangler d1 execute nk-laser-db --file=./d1-schema.sql --remote
 ```bash
 npx wrangler d1 execute nk-laser-db --command="SELECT name FROM sqlite_master WHERE type='table';" --remote
 ```
-You should see: `config`, `inquiries`, `reviews`, `sessions`.
+You will see all 8 dedicated relational tables:
+- `products` (SKU, title, category, material, stock, dimensions, prices, specs)
+- `categories` (taxonomy, slug, parent, badges, description)
+- `brands` (OEM brands, logos, descriptions, series)
+- `settings` (site configuration, business profile, contact details, theme colors)
+- `reviews` (customer feedback, ratings, verification status)
+- `inquiries` (B2B RFQ leads, quotes, AES-256-GCM encrypted PII)
+- `sessions` (authenticated administrator sessions)
+- `config` (metadata, versioning, sync timestamps)
 
 ### Step 3: Bind the D1 Database to Your Cloudflare Pages Project
 Connect your new database to your Cloudflare Pages application:
@@ -122,21 +130,28 @@ npm run db:seed
 ```bash
 npx wrangler d1 execute nk-laser-db --file=./d1-seed.sql --remote
 ```
-This executes `d1-seed.sql`, creating the tables and inserting the complete production dataset (`settings`, `products`, `categories`, `brands`, `powerRanges`, and `reviews`) directly into the D1 `config` table.
+This executes `d1-seed.sql`, creating the tables and inserting the complete production dataset into the dedicated relational tables (`products`, `categories`, `brands`, `settings`, `reviews`, and `config`).
+
+> **Note on Regenerating the Seed File:**
+> If you update `app-config.json` and want to generate a fresh `d1-seed.sql`, simply run:
+> ```bash
+> npm run db:seed:generate
+> ```
+> This script safely parses your configuration, trims heavy base64 data, and writes individual, atomic SQL INSERT statements that will never hit SQLite's 1MB statement size limit.
 
 #### Method B: 1-Click Injection from Admin Console
 Alternatively:
 1. Open your live website and log into the Admin Console at `/?admin=true`.
 2. Go to **Settings** > **Data & Backup**.
 3. Click **"Publish Changes"** (or **"Sync with Server"**).
-4. The application will instantly push your catalog into the D1 database.
+4. The application will instantly push your catalog into the D1 relational database.
 
 ### Step 6: Verify Database Connection & Records
 Run this command from your terminal to confirm your data is live in Cloudflare D1:
 ```bash
-npx wrangler d1 execute nk-laser-db --command="SELECT key, updated_at, length(value) as bytes FROM config;" --remote
+npx wrangler d1 execute nk-laser-db --command="SELECT COUNT(*) AS total_products FROM products;" --remote
 ```
-You should see rows for `master`, `products`, `settings`, or `categories` with active timestamps. **Your one-time setup is now complete!**
+You should see `total_products: 49` (or your catalog count). **Your one-time setup is now complete!**
 
 ---
 
@@ -324,6 +339,21 @@ Leave this terminal window open while reproducing the issue in your browser. Any
   2. Scroll to **Recent Local Auto-Snapshots**.
   3. Find the snapshot timestamp immediately preceding the mistake and click **"Restore Snapshot"**.
   4. Click **"Publish Changes"** to commit the restored data back into Cloudflare D1.
+
+---
+
+#### Issue 7: "statement too long: SQLITE_TOOBIG" during Seed Execution
+- **Root Cause**: Cloudflare D1 and SQLite enforce a strict maximum statement length limit of **1,000,000 bytes (1MB)** per SQL statement. If an SQL script attempts to execute a single monolithic `INSERT` statement containing an entire JSON configuration blob or large embedded base64 images, SQLite rejects it with `SQLITE_TOOBIG`.
+- **Solution**:
+  1. Use the new relational seed generator that separates data into individual, atomic `INSERT OR REPLACE` statements per table and per entity:
+     ```bash
+     npm run db:seed:generate
+     ```
+  2. Execute the updated relational seed script:
+     ```bash
+     npx wrangler d1 execute nk-laser-db --file=./d1-seed.sql --remote
+     ```
+  3. All statements are now bounded (each individual product insert is only ~1-2 KB), cleanly bypassing SQLite's statement limit. In addition, `functions/api/[[route]].ts` batches mutations in safe chunks of 50 records.
 
 ---
 
