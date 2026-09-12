@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { Upload, Link2, X, Image as ImageIcon, Check } from 'lucide-react';
+import { Upload, Link2, X, Image as ImageIcon, Check, Loader2, AlertTriangle } from 'lucide-react';
 
 interface ImageUploadFieldProps {
   label: string;
@@ -11,6 +11,10 @@ interface ImageUploadFieldProps {
   previewSize?: 'sm' | 'md' | 'lg';
   aspectRatio?: 'square' | 'wide' | 'auto';
   idPrefix?: string;
+  // Optional server-side upload hook: when provided, a selected file is sent here first so it
+  // can be persisted as a real physical file (e.g. under public/images/logo) and the returned
+  // URL is stored via onChange. If it throws/returns null, falls back to embedding as base64.
+  onUploadFile?: (file: File) => Promise<string | null>;
 }
 
 export const ImageUploadField: React.FC<ImageUploadFieldProps> = ({
@@ -22,11 +26,14 @@ export const ImageUploadField: React.FC<ImageUploadFieldProps> = ({
   brandName,
   previewSize = 'md',
   aspectRatio = 'square',
-  idPrefix = 'upload'
+  idPrefix = 'upload',
+  onUploadFile
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [activeMode, setActiveMode] = useState<'url' | 'file'>('url');
   const [fileName, setFileName] = useState<string>('');
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string>('');
 
   const sizeClasses = {
     sm: 'w-10 h-10',
@@ -40,23 +47,58 @@ export const ImageUploadField: React.FC<ImageUploadFieldProps> = ({
     auto: ''
   }[aspectRatio];
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setFileName(file.name);
+  const readFileAsDataUrl = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onloadend = () => {
-        if (reader.result) {
-          onChange(reader.result as string);
-        }
+        if (reader.result) resolve(reader.result as string);
+        else reject(new Error('Failed to read file'));
       };
+      reader.onerror = () => reject(reader.error || new Error('Failed to read file'));
       reader.readAsDataURL(file);
+    });
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadError('');
+    setFileName(file.name);
+
+    try {
+      const dataUrl = await readFileAsDataUrl(file);
+
+      if (onUploadFile) {
+        setIsUploading(true);
+        try {
+          const uploadedUrl = await onUploadFile(file);
+          if (uploadedUrl) {
+            onChange(uploadedUrl);
+          } else {
+            // Server-side upload unavailable (e.g. static deployment) — fall back to embedding
+            onChange(dataUrl);
+          }
+        } catch (uploadErr) {
+          console.error('Image upload failed, falling back to embedded image:', uploadErr);
+          setUploadError('Server upload failed, using embedded preview instead.');
+          onChange(dataUrl);
+        } finally {
+          setIsUploading(false);
+        }
+      } else {
+        onChange(dataUrl);
+      }
+    } catch (err) {
+      console.error('Failed to read selected file:', err);
+      setUploadError('Could not read the selected file.');
     }
   };
 
   const handleClear = () => {
     onChange('');
     setFileName('');
+    setUploadError('');
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -168,16 +210,35 @@ export const ImageUploadField: React.FC<ImageUploadFieldProps> = ({
           {/* Direct Upload Button */}
           <button
             type="button"
+            disabled={isUploading}
             onClick={() => fileInputRef.current?.click()}
-            className={`px-3.5 py-2 border rounded-xl text-xs font-bold flex items-center gap-1.5 shrink-0 transition-colors cursor-pointer shadow-2xs bg-white border-slate-300 hover:bg-slate-100 text-slate-700`}
+            className={`px-3.5 py-2 border rounded-xl text-xs font-bold flex items-center gap-1.5 shrink-0 transition-colors cursor-pointer shadow-2xs bg-white border-slate-300 hover:bg-slate-100 text-slate-700 disabled:opacity-60 disabled:cursor-not-allowed`}
           >
-            <Upload className="w-3.5 h-3.5 text-blue-900" />
-            <span className="hidden sm:inline">Upload File</span>
+            {isUploading ? (
+              <Loader2 className="w-3.5 h-3.5 text-blue-900 animate-spin" />
+            ) : (
+              <Upload className="w-3.5 h-3.5 text-blue-900" />
+            )}
+            <span className="hidden sm:inline">{isUploading ? 'Uploading...' : 'Upload File'}</span>
           </button>
         </div>
       </div>
 
-      {fileName && (
+      {isUploading && (
+        <div className="flex items-center gap-1.5 text-[11px] text-blue-700 font-medium pt-0.5">
+          <Loader2 className="w-3 h-3 animate-spin" />
+          <span>Uploading <strong className="font-mono">{fileName}</strong> to server...</span>
+        </div>
+      )}
+
+      {!isUploading && uploadError && (
+        <div className="flex items-center gap-1.5 text-[11px] text-amber-700 font-medium pt-0.5">
+          <AlertTriangle className="w-3 h-3 text-amber-600" />
+          <span>{uploadError}</span>
+        </div>
+      )}
+
+      {!isUploading && !uploadError && fileName && (
         <div className="flex items-center gap-1.5 text-[11px] text-emerald-700 font-medium pt-0.5">
           <Check className="w-3 h-3 text-emerald-600" />
           <span>Uploaded: <strong className="font-mono">{fileName}</strong></span>

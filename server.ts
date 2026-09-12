@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import express from 'express';
 import path from 'path';
 import fs from 'fs';
@@ -147,6 +148,20 @@ interface DatabaseStore {
 }
 
 const CONFIG_FILE_PATH = path.join(process.cwd(), 'app-config.json');
+
+// Physical Logo Upload Storage: writes real files into public/images/logo so that
+// the Vite build picks them up as static assets on the next `npm run build`.
+const LOGO_UPLOAD_DIR = path.join(process.cwd(), 'public', 'images', 'logo');
+const LOGO_UPLOAD_FILE_PREFIX = 'site-logo-';
+const LOGO_MIME_TO_EXT: Record<string, string> = {
+  'image/svg+xml': 'svg',
+  'image/png': 'png',
+  'image/jpeg': 'jpg',
+  'image/webp': 'webp',
+  'image/x-icon': 'ico',
+  'image/gif': 'gif'
+};
+const MAX_LOGO_UPLOAD_BYTES = 5 * 1024 * 1024; // 5MB
 
 function loadDatabaseFromDisk(): DatabaseStore {
   if (fs.existsSync(CONFIG_FILE_PATH)) {
@@ -945,6 +960,57 @@ async function startServer() {
     db.settings = { ...db.settings, ...req.body };
     persistDatabaseToDisk();
     res.json({ success: true, settings: db.settings });
+  });
+
+  // Upload Site Logo: persists an actual file under public/images/logo (instead of a
+  // giant base64 blob in the database) so it ships as a normal static asset on the
+  // next build. Returns the public URL path to store in settings.logoUrl.
+  app.post('/api/admin/upload-logo', requireAdminAuth, (req, res) => {
+    const dataUrl: unknown = req.body?.dataUrl;
+    if (typeof dataUrl !== 'string') {
+      return res.status(400).json({ success: false, error: 'Missing image data' });
+    }
+
+    const match = dataUrl.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,([a-zA-Z0-9+/=]+)$/);
+    if (!match) {
+      return res.status(400).json({ success: false, error: 'Invalid image data URL' });
+    }
+
+    const mimeType = match[1].toLowerCase();
+    const ext = LOGO_MIME_TO_EXT[mimeType];
+    if (!ext) {
+      return res.status(400).json({ success: false, error: 'Unsupported image type. Use PNG, JPG, SVG, WEBP, ICO or GIF.' });
+    }
+
+    let buffer: Buffer;
+    try {
+      buffer = Buffer.from(match[2], 'base64');
+    } catch {
+      return res.status(400).json({ success: false, error: 'Corrupt image data' });
+    }
+
+    if (buffer.length === 0 || buffer.length > MAX_LOGO_UPLOAD_BYTES) {
+      return res.status(400).json({ success: false, error: 'Image must be non-empty and under 5MB' });
+    }
+
+    try {
+      fs.mkdirSync(LOGO_UPLOAD_DIR, { recursive: true });
+
+      // Remove previously uploaded custom logo files so the folder doesn't accumulate stale assets
+      for (const file of fs.readdirSync(LOGO_UPLOAD_DIR)) {
+        if (file.startsWith(LOGO_UPLOAD_FILE_PREFIX)) {
+          try { fs.unlinkSync(path.join(LOGO_UPLOAD_DIR, file)); } catch { /* best-effort cleanup */ }
+        }
+      }
+
+      const fileName = `${LOGO_UPLOAD_FILE_PREFIX}${Date.now()}.${ext}`;
+      fs.writeFileSync(path.join(LOGO_UPLOAD_DIR, fileName), buffer);
+
+      res.json({ success: true, url: `/images/logo/${fileName}` });
+    } catch (e) {
+      console.error('[Logo Upload] Failed to write logo file to disk:', e);
+      res.status(500).json({ success: false, error: 'Failed to save logo file on server' });
+    }
   });
 
   // Admin Reviews Management

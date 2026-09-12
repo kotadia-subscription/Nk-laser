@@ -48,9 +48,10 @@ export const NKLogo: React.FC<NKLogoProps> = ({
     ? 'currentColor'
     : '#16264F';
 
-  // If a custom image URL/data URI is provided and hasn't errored
-  // AND it's not the default SVG path (or if it is, we can render the image or vector)
-  const hasCustomLogoUrl = Boolean(logoUrl && logoUrl.trim() && !imgError && logoUrl !== '/images/logo/nk-laser-logo.png');
+  // If a logo URL (the shipped default asset, or a custom upload) is provided and hasn't
+  // failed to load, render it as an <img>. Only fall back to the inline vector mark below
+  // when no logoUrl is set at all, or the configured image actually fails to load.
+  const hasCustomLogoUrl = Boolean(logoUrl && logoUrl.trim() && !imgError);
 
   if (hasCustomLogoUrl && logoUrl) {
     return (

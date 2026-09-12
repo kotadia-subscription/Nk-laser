@@ -15,7 +15,7 @@ export const DEFAULT_SITE_SETTINGS: SiteSettings = {
   address: "Plot No. 42, GIDC Industrial Area, Sector 3, Gujarat, India",
   addresses: [],
   workingHours: "Mon - Sat: 8:30 AM - 8:00 PM | Sun: By Appointment",
-  logoUrl: "/images/logo/nk-laser-logo.svg",
+  logoUrl: "/images/logo/nk-laser-logo.png",
   warehouseBannerUrl: "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=800&q=80",
   instagramUrl: "https://www.instagram.com/nklaser.india",
   socialLinks: {

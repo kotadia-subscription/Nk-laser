@@ -33,6 +33,7 @@ This document defines the core architecture, rules, engineering standards, compo
 ├── app-config.json                      # Persistent database store on disk (products, categories, settings, PII)
 ├── AGENTS.md                            # AI Agent guidelines, architecture & rules (Auto-injected)
 ├── CLOUDFLARE.md                        # Complete Cloudflare Pages & D1 deployment instructions
+├── LOCAL_SETUP.md                       # One-time setup + every-time run guide for local testing
 ├── PROJECT_STRUCTURE.md                 # Detailed project architecture & file index
 ├── README.md                            # Comprehensive project overview & documentation
 └── src/

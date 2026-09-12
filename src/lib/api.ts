@@ -433,6 +433,25 @@ export async function saveAdminPowerRanges(powerRanges: string[]): Promise<boole
   }
 }
 
+// Uploads a logo image as a physical file on the server (public/images/logo) instead of
+// embedding it as a base64 blob in the database. Returns the public URL path to save into
+// settings.logoUrl, or null if the server-side upload endpoint is unavailable (e.g. on a
+// static Cloudflare Pages deployment with no writable filesystem) so callers can fall back.
+export async function uploadSiteLogo(dataUrl: string): Promise<string | null> {
+  try {
+    const res = await adminFetch('/api/admin/upload-logo', {
+      method: 'POST',
+      body: JSON.stringify({ dataUrl })
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    return data.url || null;
+  } catch (e) {
+    console.warn('API: Server-side logo upload unavailable, falling back to embedded image:', e);
+    return null;
+  }
+}
+
 export async function saveAdminSettings(settings: Partial<SiteSettings>): Promise<SiteSettings | null> {
   try {
     const res = await adminFetch('/api/admin/settings', {

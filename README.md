@@ -18,6 +18,7 @@ A high-performance B2B digital catalog, RFQ quotation engine, and secure worksho
 ├── AGENTS.md                            # AI Agent guidelines, architecture & rules (Auto-injected)
 ├── CLOUDFLARE.md                        # Complete Cloudflare Pages & D1 deployment instructions
 ├── DATA_MANAGEMENT.md                   # Data persistence, modular import/export & server sync guide
+├── LOCAL_SETUP.md                       # One-time setup + every-time run guide for local testing
 ├── PROJECT_STRUCTURE.md                 # Detailed architectural blueprint & component tree
 ├── README.md                            # Comprehensive project overview & documentation
 └── src/
@@ -144,6 +145,9 @@ Start the full-stack development environment:
 npm run dev
 ```
 The dev server launches on `http://localhost:3000` with the Express API and Vite middleware.
+
+> For `.env` setup, the admin login password, a repeatable test checklist, and troubleshooting,
+> see **[LOCAL_SETUP.md](./LOCAL_SETUP.md)**.
 
 ### 3. Production Build & Execution
 Build the static frontend bundle and compile the backend server bundle:

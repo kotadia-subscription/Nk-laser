@@ -131,7 +131,7 @@ export function renderBotPage(
 ): { html: string; status: number } | null {
   const cleanPath = pathname.toLowerCase().replace(/\/$/, '') || '/';
   const companyName = db.settings.businessName || 'NK Laser Spares & Optics';
-  const logoUrl = db.settings.logoUrl ? (db.settings.logoUrl.startsWith('http') ? db.settings.logoUrl : `${siteUrl}${db.settings.logoUrl}`) : `${siteUrl}/images/logo/nk-laser-logo.svg`;
+  const logoUrl = db.settings.logoUrl ? (db.settings.logoUrl.startsWith('http') ? db.settings.logoUrl : `${siteUrl}${db.settings.logoUrl}`) : `${siteUrl}/images/logo/nk-laser-logo.png`;
 
   // 1. PRODUCT DETAIL PAGE
   if (cleanPath.startsWith('/product/')) {
@@ -640,7 +640,7 @@ function wrapHtmlDoc(options: {
   <meta name="twitter:description" content="${escapeXml(description)}" />
   <meta name="twitter:image" content="${escapeXml(ogImg)}" />
 
-  <link rel="icon" type="image/svg+xml" href="/images/logo/nk-laser-logo.svg" />
+  <link rel="icon" type="image/png" href="/images/logo/nk-laser-logo.png" />
 
   ${schemaGraph ? `<script type="application/ld+json">\n${JSON.stringify(schemaGraph, null, 2)}\n  </script>` : ''}
 
