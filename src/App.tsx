@@ -52,6 +52,9 @@ import { parseUrlState, updateBrowserUrl } from './utils/navigation';
 
 export default function App() {
   const [settings, setSettings] = useState<SiteSettings>(loadSiteSettings());
+  // True once the authoritative logo (and rest of settings) has arrived from the server,
+  // so the navbar/footer never flash the built-in default logo before the admin-configured one loads.
+  const [logoReady, setLogoReady] = useState(false);
   const [categories, setCategories] = useState<ProductCategoryDef[]>(loadCategories());
   const [powerRanges, setPowerRanges] = useState<string[]>(loadPowerRanges());
   const [products, setProducts] = useState<ProductItem[]>(loadProducts());
@@ -109,6 +112,7 @@ export default function App() {
 
     const applyConfigurationState = (config: FullAppConfigurationBackup) => {
       if (config.settings) setSettings(config.settings);
+      setLogoReady(true);
       if (config.categories && config.categories.length > 0) setCategories(config.categories);
       if (config.powerRanges && config.powerRanges.length > 0) setPowerRanges(config.powerRanges);
       if (config.products && config.products.length > 0) setProducts(config.products);
@@ -148,6 +152,8 @@ export default function App() {
         applyParsedUrlState(window.location.search, window.location.hash, resolvedProducts, resolvedCategories);
       } catch (err) {
         console.warn('Could not complete live fetch from API:', err);
+      } finally {
+        setLogoReady(true);
       }
     };
 
@@ -518,6 +524,7 @@ export default function App() {
       {/* Sticky Navigation Bar */}
       <Navbar
         settings={settings}
+        logoReady={logoReady}
         categories={categories}
         currentView={currentView}
         onNavigatePage={handleNavigatePage}
@@ -657,6 +664,7 @@ export default function App() {
       {/* Persistent Footer with Bottom Admin Panel Link */}
       <Footer
         settings={settings}
+        logoReady={logoReady}
         categories={categories}
         brands={brands}
         onOpenAdmin={() => handleOpenAdmin('dashboard')}
