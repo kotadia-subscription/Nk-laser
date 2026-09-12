@@ -50,7 +50,7 @@ export const NKLogo: React.FC<NKLogoProps> = ({
 
   // If a custom image URL/data URI is provided and hasn't errored
   // AND it's not the default SVG path (or if it is, we can render the image or vector)
-  const hasCustomLogoUrl = Boolean(logoUrl && logoUrl.trim() && !imgError && logoUrl !== '/images/logo/nk-laser-logo.svg' && logoUrl !== '/images/logo/nk-laser-mark.svg');
+  const hasCustomLogoUrl = Boolean(logoUrl && logoUrl.trim() && !imgError && logoUrl !== '/images/logo/nk-laser-logo.png');
 
   if (hasCustomLogoUrl && logoUrl) {
     return (

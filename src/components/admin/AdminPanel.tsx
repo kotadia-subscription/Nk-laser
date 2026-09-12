@@ -283,19 +283,41 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   // ----------------------------------------------------
   // Category Actions
   // ----------------------------------------------------
+  const ensureUniqueCategorySlug = (baseSlug: string, excludeId?: string): string => {
+    const taken = new Set(categories.filter(c => c.id !== excludeId).map(c => c.slug));
+    if (!taken.has(baseSlug)) return baseSlug;
+    let suffix = 2;
+    while (taken.has(`${baseSlug}-${suffix}`)) suffix++;
+    return `${baseSlug}-${suffix}`;
+  };
+
   const handleSaveCategory = async (catData: Partial<ProductCategoryDef>) => {
     let updated: ProductCategoryDef[];
     if (catData.id) {
-      updated = categories.map(c => c.id === catData.id ? ({ ...c, ...catData } as ProductCategoryDef) : c);
+      const existing = categories.find(c => c.id === catData.id);
+      const requestedSlug = catData.slug
+        ? catData.slug.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
+        : existing?.slug;
+      const resolvedSlug = requestedSlug && requestedSlug !== existing?.slug
+        ? ensureUniqueCategorySlug(requestedSlug, catData.id)
+        : requestedSlug;
+      const resolvedCatData = { ...catData, slug: resolvedSlug };
+
+      updated = categories.map(c => c.id === catData.id ? ({ ...c, ...resolvedCatData } as ProductCategoryDef) : c);
+      if (existing && existing.slug === selectedCategorySlug && resolvedSlug && resolvedSlug !== existing.slug) {
+        setSelectedCategorySlug(resolvedSlug);
+      }
       try {
-        await updateAdminCategory(catData.id, catData);
+        await updateAdminCategory(catData.id, resolvedCatData);
       } catch (err) {
         console.warn('Could not sync category to server:', err);
       }
+      catData = resolvedCatData;
     } else {
+      const baseSlug = catData.slug || catData.name?.toLowerCase().replace(/[^a-z0-9]+/g, '-') || 'custom-category';
       const newCat: ProductCategoryDef = {
         id: 'cat-' + Date.now(),
-        slug: catData.slug || catData.name?.toLowerCase().replace(/[^a-z0-9]+/g, '-') || 'custom-category',
+        slug: ensureUniqueCategorySlug(baseSlug),
         name: catData.name || 'New Category',
         shortTitle: catData.shortTitle || catData.name || 'Category',
         description: catData.description || 'Laser spares and consumables.',
@@ -313,6 +335,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       } catch (err) {
         console.warn('Could not create category on server:', err);
       }
+      catData = newCat;
     }
 
     saveCategories(updated);

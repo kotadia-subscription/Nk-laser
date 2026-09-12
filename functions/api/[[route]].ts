@@ -452,6 +452,18 @@ async function loadFullConfig(env: Env) {
   return loaded;
 }
 
+// Deletes rows from a relational D1 table whose id is not present in the incoming array,
+// so that removals made client-side (delete category/product/brand/review) are actually
+// reflected in D1 instead of the stale row being resurrected on the next load.
+async function deleteStaleRows(env: Env, table: string, incomingIds: string[]): Promise<void> {
+  if (incomingIds.length > 0) {
+    const placeholders = incomingIds.map(() => '?').join(',');
+    await env.DB.prepare(`DELETE FROM ${table} WHERE id NOT IN (${placeholders})`).bind(...incomingIds).run();
+  } else {
+    await env.DB.prepare(`DELETE FROM ${table}`).run();
+  }
+}
+
 // Helper to persist master configuration to D1
 async function saveFullConfig(env: Env, configData: any): Promise<string> {
   const publishedAt = new Date().toISOString();
@@ -484,43 +496,51 @@ async function saveFullConfig(env: Env, configData: any): Promise<string> {
         await env.DB.batch(settingStatements);
       }
 
-      // 2. Save Categories to categories table
-      if (Array.isArray(configData.categories) && configData.categories.length > 0) {
-        const catStatements = configData.categories.map((c: ProductCategoryDef) => {
-          return env.DB.prepare(`
-            INSERT OR REPLACE INTO categories (
-              id, slug, name, short_title, description, icon_name, image_url,
-              default_material, default_power, item_count, featured, show_on_home,
-              sub_categories_json, oem_brands_json, power_ranges_json, raw_json, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-          `).bind(
-            c.id, c.slug, c.name, c.shortTitle || '', c.description || '', c.iconName || '', c.imageUrl || '',
-            c.defaultMaterial || '', c.defaultPower || '', c.itemCount || 0,
-            c.featured !== false ? 1 : 0, c.showOnHome !== false ? 1 : 0,
-            JSON.stringify(c.subCategories || []), JSON.stringify(c.oemBrands || []),
-            JSON.stringify(c.powerRanges || []), JSON.stringify(c)
-          );
-        });
-        await env.DB.batch(catStatements);
+      // 2. Save Categories to categories table (and remove rows for deleted categories)
+      if (Array.isArray(configData.categories)) {
+        await deleteStaleRows(env, 'categories', configData.categories.map((c: ProductCategoryDef) => c.id));
+        if (configData.categories.length > 0) {
+          const catStatements = configData.categories.map((c: ProductCategoryDef) => {
+            return env.DB.prepare(`
+              INSERT OR REPLACE INTO categories (
+                id, slug, name, short_title, description, icon_name, image_url,
+                default_material, default_power, item_count, featured, show_on_home,
+                sub_categories_json, oem_brands_json, power_ranges_json, raw_json, updated_at
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+            `).bind(
+              c.id, c.slug, c.name, c.shortTitle || '', c.description || '', c.iconName || '', c.imageUrl || '',
+              c.defaultMaterial || '', c.defaultPower || '', c.itemCount || 0,
+              c.featured !== false ? 1 : 0, c.showOnHome !== false ? 1 : 0,
+              JSON.stringify(c.subCategories || []), JSON.stringify(c.oemBrands || []),
+              JSON.stringify(c.powerRanges || []), JSON.stringify(c)
+            );
+          });
+          await env.DB.batch(catStatements);
+        }
       }
 
-      // 3. Save Brands to brands table
-      if (Array.isArray(configData.brands) && configData.brands.length > 0) {
-        const brandStatements = configData.brands.map((b: BrandItem) => {
-          const series = (b as any).seriesList || (b as any).series || [];
-          return env.DB.prepare(`
-            INSERT OR REPLACE INTO brands (
-              id, name, logo_url, description, series_json, raw_json, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-          `).bind(
-            b.id, b.name, b.logoUrl || '', b.description || '', JSON.stringify(series), JSON.stringify(b)
-          );
-        });
-        await env.DB.batch(brandStatements);
+      // 3. Save Brands to brands table (and remove rows for deleted brands)
+      if (Array.isArray(configData.brands)) {
+        await deleteStaleRows(env, 'brands', configData.brands.map((b: BrandItem) => b.id));
+        if (configData.brands.length > 0) {
+          const brandStatements = configData.brands.map((b: BrandItem) => {
+            const series = (b as any).seriesList || (b as any).series || [];
+            return env.DB.prepare(`
+              INSERT OR REPLACE INTO brands (
+                id, name, logo_url, description, series_json, raw_json, updated_at
+              ) VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+            `).bind(
+              b.id, b.name, b.logoUrl || '', b.description || '', JSON.stringify(series), JSON.stringify(b)
+            );
+          });
+          await env.DB.batch(brandStatements);
+        }
       }
 
       // 4. Save Products to products table (in safe chunks of 50 to avoid any D1 statement limits)
-      if (Array.isArray(configData.products) && configData.products.length > 0) {
+      // and remove rows for deleted products.
+      if (Array.isArray(configData.products)) {
+        await deleteStaleRows(env, 'products', configData.products.map((p: ProductItem) => p.id));
         const CHUNK_SIZE = 50;
         for (let i = 0; i < configData.products.length; i += CHUNK_SIZE) {
           const chunk = configData.products.slice(i, i + CHUNK_SIZE);
@@ -544,8 +564,9 @@ async function saveFullConfig(env: Env, configData: any): Promise<string> {
         }
       }
 
-      // 5. Save Reviews to reviews table
-      if (Array.isArray(configData.reviews) && configData.reviews.length > 0) {
+      // 5. Save Reviews to reviews table (and remove rows for deleted reviews)
+      if (Array.isArray(configData.reviews)) {
+        await deleteStaleRows(env, 'reviews', configData.reviews.map((r: ReviewItem) => r.id));
         const CHUNK_SIZE = 50;
         for (let i = 0; i < configData.reviews.length; i += CHUNK_SIZE) {
           const chunk = configData.reviews.slice(i, i + CHUNK_SIZE);
@@ -1180,8 +1201,18 @@ export async function onRequest(context: PagesContext): Promise<Response> {
     // POST /api/admin/categories (Add category)
     if (pathname === '/api/admin/categories' && method === 'POST') {
       const cat = await request.json().catch(() => ({})) as ProductCategoryDef;
-      logCloudflare('D1_INSERT', `Admin creating category in D1: Name="${cat.name}", Slug="${cat.slug}", ID="${cat.id}"`);
       const config = await loadFullConfig(env);
+      // The D1 `categories` table enforces a UNIQUE constraint on slug; INSERT OR REPLACE
+      // resolves a slug collision by silently deleting the pre-existing row, so a duplicate
+      // slug here would destroy another category. Guard against that by de-duplicating first.
+      if (cat.slug && config.categories.some(c => c.slug === cat.slug && c.id !== cat.id)) {
+        const taken = new Set(config.categories.filter(c => c.id !== cat.id).map(c => c.slug));
+        let suffix = 2;
+        let candidate = `${cat.slug}-${suffix}`;
+        while (taken.has(candidate)) { suffix++; candidate = `${cat.slug}-${suffix}`; }
+        cat.slug = candidate;
+      }
+      logCloudflare('D1_INSERT', `Admin creating category in D1: Name="${cat.name}", Slug="${cat.slug}", ID="${cat.id}"`);
       const updatedCategories = [...config.categories, cat];
       await saveFullConfig(env, { ...config, categories: updatedCategories });
       logCloudflare('D1_INSERT', `Category Name="${cat.name}" successfully committed to Cloudflare D1.`);
@@ -1192,8 +1223,16 @@ export async function onRequest(context: PagesContext): Promise<Response> {
     if (pathname.startsWith('/api/admin/categories/') && method === 'PUT') {
       const id = pathname.replace('/api/admin/categories/', '');
       const updates = await request.json().catch(() => ({})) as Partial<ProductCategoryDef>;
-      logCloudflare('D1_UPDATE', `Admin updating category ID="${id}" in D1. Fields: ${Object.keys(updates).join(', ')}`);
       const config = await loadFullConfig(env);
+      // Same UNIQUE-slug safeguard as category creation, applied to renames.
+      if (updates.slug && config.categories.some(c => c.slug === updates.slug && c.id !== id)) {
+        const taken = new Set(config.categories.filter(c => c.id !== id).map(c => c.slug));
+        let suffix = 2;
+        let candidate = `${updates.slug}-${suffix}`;
+        while (taken.has(candidate)) { suffix++; candidate = `${updates.slug}-${suffix}`; }
+        updates.slug = candidate;
+      }
+      logCloudflare('D1_UPDATE', `Admin updating category ID="${id}" in D1. Fields: ${Object.keys(updates).join(', ')}`);
       const updatedCategories = config.categories.map(c => c.id === id ? { ...c, ...updates } : c);
       await saveFullConfig(env, { ...config, categories: updatedCategories });
       logCloudflare('D1_UPDATE', `Category ID="${id}" updated successfully in Cloudflare D1.`);
