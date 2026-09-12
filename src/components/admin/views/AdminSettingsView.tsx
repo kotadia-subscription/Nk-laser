@@ -78,6 +78,7 @@ import {
   loadReviews
 } from '../../../lib/storage';
 import { ImportDataModal, ImportEntity } from '../modals/ImportDataModal';
+import { uploadSiteLogo } from '../../../lib/api';
 
 interface AdminSettingsViewProps {
   theme: 'light' | 'dark';
@@ -289,6 +290,18 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({
   useEffect(() => {
     setSnapshots(loadConfigurationSnapshots());
   }, []);
+
+  // Persists the uploaded store logo as a real physical file on the server (public/images/logo)
+  // so it ships with the next build, rather than storing a giant base64 blob in the database.
+  const handleLogoFileUpload = async (file: File): Promise<string | null> => {
+    const dataUrl: string = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = () => reject(reader.error || new Error('Failed to read file'));
+      reader.readAsDataURL(file);
+    });
+    return uploadSiteLogo(dataUrl);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -834,10 +847,11 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({
               label="Official Store Header Logo (URL or Direct Upload)"
               value={formData.logoUrl || ''}
               onChange={(val) => setFormData({ ...formData, logoUrl: val })}
+              onUploadFile={handleLogoFileUpload}
               theme={theme}
               brandName={formData.businessName || 'NK Laser'}
               placeholder="https://... or upload local PNG/SVG/JPG"
-              helperText="Upload or enter an image URL for the website navbar & footer. Replaces the active logo immediately."
+              helperText="Direct uploads are saved as a physical file on the server (public/images/logo) and ship with the next build. Remember to click Save Settings below to apply."
               previewSize="md"
               aspectRatio="wide"
               idPrefix="store-logo"
