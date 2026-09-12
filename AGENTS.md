@@ -213,6 +213,9 @@ Every navigation change in the UI MUST synchronize with the browser URL using `u
 ---
 
 ## 7. Verification & Quality Assurance
-After making any codebase modifications, always run:
-1. `lint_applet` (`npm run lint`) to verify TypeScript type-safety without compilation errors.
-2. `compile_applet` (`npm run build`) to ensure the Vite production bundle and backend server bundle build successfully.
+
+### 7.1 Mandatory Compile Check After Every Change
+**Every single code change, no matter how small, must be verified to compile before it is considered done.** After editing any file(s):
+1. Run `npm run lint` (`tsc --noEmit`) to confirm TypeScript type-safety with zero compilation errors.
+2. Run `npm run build` to confirm the Vite production bundle and the `esbuild`-bundled backend server (`server.ts`) both build successfully end-to-end.
+3. If either command fails, fix the underlying issue immediately and re-run both before moving on or reporting the task as complete — never leave the project in a non-compiling state.

@@ -28,6 +28,7 @@ import { NKLogo } from '../common/NKLogo';
 
 export interface FooterProps {
   settings: SiteSettings;
+  logoReady?: boolean;
   categories?: ProductCategoryDef[];
   brands?: BrandItem[];
   onOpenAdmin?: () => void;
@@ -40,6 +41,7 @@ export interface FooterProps {
 
 export const Footer: React.FC<FooterProps> = ({
   settings,
+  logoReady = true,
   categories = [],
   brands = [],
   onOpenAdmin,
@@ -121,14 +123,18 @@ export const Footer: React.FC<FooterProps> = ({
         {/* Column 1: Brand Info & Operating Hours (3 cols) */}
         <div className="lg:col-span-3 space-y-4">
           <div className="flex flex-col items-start gap-1">
-            <NKLogo
-              logoUrl={settings.logoUrl}
-              size="lg"
-              showSubtitle={true}
-              themeMode="light"
-              alt={settings.businessName}
-              className="h-12 w-auto"
-            />
+            {logoReady ? (
+              <NKLogo
+                logoUrl={settings.logoUrl}
+                size="lg"
+                showSubtitle={true}
+                themeMode="light"
+                alt={settings.businessName}
+                className="h-12 w-auto"
+              />
+            ) : (
+              <div className="h-12 w-28" aria-hidden="true" />
+            )}
           </div>
 
           <p className="text-slate-600 text-xs leading-relaxed">

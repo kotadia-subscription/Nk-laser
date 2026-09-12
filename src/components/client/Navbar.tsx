@@ -34,6 +34,7 @@ import { extractInstagramUsername, getInstagramUrl } from '../../utils/instagram
 
 interface NavbarProps {
   settings: SiteSettings;
+  logoReady?: boolean;
   currentView: PageView;
   onNavigatePage: (view: PageView) => void;
   onOpenInquiryModal?: () => void;
@@ -48,6 +49,7 @@ interface NavbarProps {
 
 export const Navbar: React.FC<NavbarProps> = ({
   settings,
+  logoReady = true,
   currentView,
   onNavigatePage,
   onOpenInquiryModal,
@@ -241,14 +243,18 @@ export const Navbar: React.FC<NavbarProps> = ({
             }} 
             className="flex flex-col sm:flex-row items-start sm:items-center gap-1 sm:gap-2 cursor-pointer group shrink-0 select-none py-1"
           >
-            <NKLogo
-              logoUrl={settings.logoUrl}
-              size="sm"
-              showSubtitle={false}
-              themeMode={settings.themeMode}
-              alt={settings.businessName}
-              className="h-8 sm:h-9 w-auto group-hover:scale-105 transition-transform shrink-0"
-            />
+            {logoReady ? (
+              <NKLogo
+                logoUrl={settings.logoUrl}
+                size="sm"
+                showSubtitle={false}
+                themeMode={settings.themeMode}
+                alt={settings.businessName}
+                className="h-8 sm:h-9 w-auto group-hover:scale-105 transition-transform shrink-0"
+              />
+            ) : (
+              <div className="h-8 sm:h-9 w-20 shrink-0" aria-hidden="true" />
+            )}
             <div className="flex flex-col">
               <div className="flex items-center gap-1.5">
                 <span className="font-extrabold text-[11px] sm:text-sm tracking-tight text-[var(--text-primary)]">
